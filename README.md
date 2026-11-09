@@ -81,7 +81,16 @@ Then plug in the phone with USB debugging on and press **Run**. For a shareable 
 `android/app/build/outputs/apk/debug/app-debug.apk`, which you can sideload. For the Play Store,
 create a signing key in **Build → Generate Signed Bundle / APK** and upload the `.aab`.
 
-**Release APK to share.** Create a signing key once (keep the file and passwords safe; the same
+**Builds on GitHub.** Every push to `main` runs `.github/workflows/android.yml`, which tests the
+web layer, syncs it into the Android project, builds a release APK and app bundle, and replaces the
+rolling **dev** prerelease on the Releases page with the new APK. Pushing a tag like `v1.2.0`
+publishes a proper release instead. To sign with a stable key (so each build installs over the
+last one), add repository secrets `NBACK_KEYSTORE_B64` (`base64 -i nback-release.jks | pbcopy`)
+and `NBACK_KEYSTORE_PASSWORD`, plus `NBACK_KEY_ALIAS` / `NBACK_KEY_PASSWORD` if they differ from
+`nback` and the keystore password. Without the secrets, dev builds use a throwaway debug key and
+tagged releases fail on purpose.
+
+**Release APK to share, built locally.** Create a signing key once (keep the file and passwords safe; the same
 key must sign every future update), then build:
 
 ```

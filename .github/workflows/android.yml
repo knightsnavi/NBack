@@ -1,0 +1,113 @@
+name: Android
+
+# Every push to main builds and publishes a rolling "dev" prerelease with the APK.
+# A version tag (v1.2.0) publishes a proper release. Pull requests just build.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "RELEASE=1" >> "$GITHUB_ENV"
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION_NAME=0.0.${GITHUB_RUN_NUMBER}-$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          fi
+          echo "VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
+      - name: Web layer tests and sync
+        run: |
+          npm ci
+          npm test
+          npx cap sync android
+
+      # One stable signing key, so each new APK installs over the old one.
+      # Secrets: NBACK_KEYSTORE_B64 (base64 of the .jks), NBACK_KEYSTORE_PASSWORD,
+      # optional NBACK_KEY_ALIAS (default "nback") and NBACK_KEY_PASSWORD (default: keystore password).
+      - name: Load signing key
+        env:
+          KS_B64: ${{ secrets.NBACK_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.NBACK_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.NBACK_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.NBACK_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/nback.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/nback.jks" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=${KS_ALIAS:-nback}" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=${KS_KEY_PASS:-$KS_PASS}" >> "$GITHUB_ENV"
+          elif [ -n "$RELEASE" ]; then
+            echo "::error::Add the NBACK_KEYSTORE_B64 and NBACK_KEYSTORE_PASSWORD secrets before tagging a release."
+            exit 1
+          else
+            echo "::warning::No NBACK_KEYSTORE_B64 secret; this build is signed with a throwaway debug key."
+          fi
+
+      - name: Build
+        working-directory: android
+        run: |
+          set -o pipefail
+          if ! ./gradlew --no-daemon assembleRelease bundleRelease \
+               -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE" 2>&1 | tee build.log; then
+            grep -E "^e: |FAILED|Exception|error:" build.log | head -40 | while IFS= read -r line; do echo "::error::${line}"; done
+            exit 1
+          fi
+          mkdir -p ../out
+          cp app/build/outputs/apk/release/*.apk "../out/NBack-${VERSION_NAME}.apk"
+          cp app/build/outputs/bundle/release/*.aab "../out/NBack-${VERSION_NAME}.aab"
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: NBack-${{ env.VERSION_NAME }}
+          path: out/*
+
+      # Builds from main replace one rolling "dev" prerelease.
+      - name: Publish dev build
+        if: env.RELEASE == '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete dev --cleanup-tag --yes >/dev/null 2>&1 || true
+          gh release create dev "out/NBack-${VERSION_NAME}.apk" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "NBack dev build ${VERSION_NAME}" \
+            --notes "Latest build of main ($GITHUB_SHA). Signed with ${KEYSTORE_FILE:+the release key}${KEYSTORE_FILE:-a throwaway key: uninstall NBack before installing it}."
+
+      - name: Publish release
+        if: env.RELEASE != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" out/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" out/* \
+              --title "NBack ${VERSION_NAME}" --generate-notes
+          fi
