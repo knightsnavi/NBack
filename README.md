@@ -74,6 +74,20 @@ Then plug in the phone with USB debugging on and press **Run**. For a shareable 
 `android/app/build/outputs/apk/debug/app-debug.apk`, which you can sideload. For the Play Store,
 create a signing key in **Build → Generate Signed Bundle / APK** and upload the `.aab`.
 
+**Release APK to share.** Create a signing key once (keep the file and passwords safe; the same
+key must sign every future update), then build:
+
+```
+cd android
+keytool -genkeypair -v -keystore nback-release.jks -alias nback -keyalg RSA -keysize 2048 -validity 10000
+cp keystore.properties.example keystore.properties   # then fill in the passwords
+./gradlew assembleRelease
+```
+
+The signed APK is `android/app/build/outputs/apk/release/app-release.apk`. Send that file; the
+recipient opens it on their phone and allows installs from the app they opened it with.
+`./gradlew bundleRelease` produces the `.aab` for the Play Store instead.
+
 After editing anything in `www/`, run `npx cap sync android` again before building.
 
 Native pieces live in `android/app/src/main/java/com/knightsnavi/nback/`:
