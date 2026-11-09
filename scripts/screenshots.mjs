@@ -18,6 +18,8 @@ const VIEWPORTS = {
   cover: { width: 360, height: 880 },
   inner: { width: 725, height: 870 },
   innerLandscape: { width: 870, height: 725 },
+  fold8inner: { width: 840, height: 757 },
+  fold8cover: { width: 400, height: 940 },
   tabletop: { width: 870, height: 725, feature: { orientation: 'horizontal', offset: 349, maskLength: 28 } },
   book: { width: 725, height: 870, feature: { orientation: 'vertical', offset: 349, maskLength: 28 } },
 };

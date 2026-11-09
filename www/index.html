@@ -123,10 +123,8 @@
           </div>
 
           <div class="mode-chips" id="mode-chips" role="radiogroup" aria-label="Game mode">
-            <button class="chip" data-mode="position" role="radio" aria-checked="false">Position</button>
-            <button class="chip" data-mode="sound" role="radio" aria-checked="false">Sound</button>
-            <button class="chip" data-mode="dual" role="radio" aria-checked="true">Dual</button>
-            <button class="chip" data-mode="triple" role="radio" aria-checked="false">Triple</button>
+            <button class="chip" data-mode="dual" role="radio" aria-checked="true">Dual <small>position + sound</small></button>
+            <button class="chip" data-mode="triple" role="radio" aria-checked="false">Triple <small>+ color</small></button>
           </div>
 
           <div class="n-row">
@@ -221,10 +219,10 @@
             <label class="row-setting">
               <span>Mode</span>
               <select data-setting="mode">
-                <option value="position">Position only</option>
-                <option value="sound">Sound only</option>
                 <option value="dual">Dual (position + sound)</option>
                 <option value="triple">Triple (+ color)</option>
+                <option value="position">Position only (practice)</option>
+                <option value="sound">Sound only (practice)</option>
               </select>
             </label>
             <label class="row-setting">

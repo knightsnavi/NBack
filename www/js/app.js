@@ -266,6 +266,7 @@ function renderHome() {
   pill.textContent = s.adaptive ? 'Adaptive' : 'Manual';
   pill.classList.toggle('off', !s.adaptive);
   for (const chip of $$('#mode-chips .chip')) chip.setAttribute('aria-checked', String(chip.dataset.mode === s.mode));
+  $('#mode-chips').title = s.mode === 'position' || s.mode === 'sound' ? `${MODE_LABEL[s.mode]}-only practice is set in Settings` : '';
   $('#start-meta').textContent = sessionMeta();
 
   const goal = s.dailyGoal;
