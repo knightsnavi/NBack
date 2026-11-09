@@ -155,17 +155,36 @@ export function scoreBlock(sequence, responses) {
 }
 
 /**
- * Jaeggi adaptive rule: < 3 errors → N+1, > 5 errors → N-1, otherwise unchanged.
- * Thresholds scale with block length so long blocks are not punished.
+ * Adaptive level change after a block.
+ *  - 'standard' (Jaeggi 2008): fewer than 3 errors → N+1, more than 5 → N-1.
+ *    Thresholds scale with block length so long blocks are not punished.
+ *  - 'relaxed' (Brain Workshop default): accuracy ≥ 80% → N+1, below 50% → N-1.
  */
 export function nextN(n, errors, opts = {}) {
+  const { min = 1, max = 9, rule = 'standard' } = opts;
+  if (rule === 'relaxed') {
+    const acc = opts.accuracy ?? 0;
+    if (acc >= (opts.upAccuracy ?? 0.8)) return Math.min(n + 1, max);
+    if (acc < (opts.downAccuracy ?? 0.5)) return Math.max(n - 1, min);
+    return n;
+  }
   const scale = opts.scorable ? opts.scorable / 20 : 1;
   const up = opts.up ?? Math.round(3 * scale);
   const down = opts.down ?? Math.round(5 * scale);
-  const { min = 1, max = 9 } = opts;
   if (errors < up) return Math.min(n + 1, max);
   if (errors > down) return Math.max(n - 1, min);
   return n;
+}
+
+/** How far a block was from a level up, for the results screen. */
+export function levelUpGap(errors, accuracy, opts = {}) {
+  const { rule = 'standard', scorable = 20 } = opts;
+  if (rule === 'relaxed') {
+    const need = opts.upAccuracy ?? 0.8;
+    return { kind: 'accuracy', target: need, gap: Math.max(0, need - accuracy) };
+  }
+  const up = Math.round(3 * (scorable / 20));
+  return { kind: 'errors', target: up, gap: Math.max(0, errors - (up - 1)) };
 }
 
 /** Deterministic PRNG for tests and reproducible sequences (mulberry32). */

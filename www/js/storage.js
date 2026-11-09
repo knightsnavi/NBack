@@ -12,6 +12,7 @@ const KEYS = {
 export const DEFAULT_SETTINGS = Object.freeze({
   n: 2,
   adaptive: true,
+  progression: 'standard', // 'standard' (<3 errors) | 'relaxed' (80% accuracy)
   mode: 'dual',          // 'position' | 'sound' | 'dual' | 'triple'
   length: 'standard',    // 'short' | 'standard' | 'long'
   interval: 3000,        // ms between stimulus onsets

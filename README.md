@@ -21,7 +21,10 @@ Follows the dual N-back task from Jaeggi et al. (2008):
   (C H K L Q R S T) is spoken at the same time
 - a block has 20 + N trials, with 6 position targets and 6 sound targets, 2 of them coinciding
 - press **Position** when the square matches the one N steps ago, **Sound** when the letter does
-- adaptive level: fewer than 3 errors raises N, more than 5 lowers it (thresholds scale with block length)
+- adaptive level: fewer than 3 errors raises N, more than 5 lowers it (thresholds scale with block length).
+  A Relaxed progression option advances at 80% accuracy instead, as most training apps do.
+- a 300 ms grace window: a press just after a new item appears still counts for the previous item
+  when that item had an unanswered target in that stream
 
 Modes: position only, sound only, dual, and **triple** (adds a colour stream painted on the lit
 square, with optional colour names for players who find colours hard to tell apart).

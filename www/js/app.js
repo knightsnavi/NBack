@@ -37,6 +37,8 @@ const audio = new LetterAudio(G.LETTERS, 'audio/');
 /* ------------------------------------------------------------------ */
 /* Runner: timing for one block                                        */
 /* ------------------------------------------------------------------ */
+const GRACE_MS = 300; // a press this soon after a new item still counts for the previous one
+
 class Runner {
   constructor(sequence, { interval, stimulusMs }, hooks) {
     this.seq = sequence;
@@ -98,10 +100,21 @@ class Runner {
 
   respond(stream) {
     if (this.paused || this.finished || this.index < 0) return { ignored: true };
+    const sinceOnset = performance.now() - this.onsetAt;
+    // Late reaction to the previous item: within the grace window, the previous
+    // item had a target in this stream, and it was not answered yet.
+    if (sinceOnset < GRACE_MS && this.index - 1 >= this.seq.n) {
+      const prev = this.responses[this.index - 1];
+      const prevTrial = this.seq.trials[this.index - 1];
+      if (prev && prev[stream] == null && prevTrial.match[stream]) {
+        prev[stream] = Math.round(this.interval + sinceOnset);
+        return { correct: true, rt: prev[stream], late: true };
+      }
+    }
     if (this.index < this.seq.n) return { tooEarly: true };
     const r = this.responses[this.index];
     if (r[stream] != null) return { duplicate: true };
-    const rt = Math.round(performance.now() - this.onsetAt);
+    const rt = Math.round(sinceOnset);
     r[stream] = rt;
     return { correct: Boolean(this.seq.trials[this.index].match[stream]), rt };
   }
@@ -434,6 +447,7 @@ function respond(stream) {
     return;
   }
   if (res.ignored || res.duplicate) return;
+  if (res.late) state.errorsAt.delete(runner.index - 1);
   if (state.settings.feedback) {
     flash(stream, res.correct ? 'good' : 'bad');
     if (!res.correct) state.errorsAt.add(runner.index);
@@ -485,7 +499,7 @@ function finishSession(responses) {
   const s = state.settings;
   const score = G.scoreBlock(seq, responses);
   const scorable = seq.trials.length - seq.n;
-  const next = s.adaptive ? G.nextN(seq.n, score.errors, { scorable }) : seq.n;
+  const next = s.adaptive ? G.nextN(seq.n, score.errors, { scorable, rule: s.progression, accuracy: score.accuracy }) : seq.n;
   const entry = {
     ts: Date.now(),
     n: seq.n,
@@ -643,10 +657,15 @@ const STREAM_SHORT = { position: 'Position', sound: 'Sound', color: 'Color' };
 
 function headlineFor(entry, score) {
   const delta = entry.nextN - entry.n;
+  const gap = G.levelUpGap(score.errors, score.accuracy, { rule: state.settings.progression, scorable: entry.trials - entry.n });
+  const closeness = gap.kind === 'errors'
+    ? (gap.gap === 0 ? '' : gap.gap === 1 ? 'One fewer error next time levels you up' : `${gap.gap} fewer errors next time levels you up`)
+    : (gap.gap === 0 ? '' : `${Math.ceil(gap.gap * 100)} more points of accuracy levels you up`);
   if (delta > 0) return ['Awesome!', `You move up to ${entry.nextN}-back`];
-  if (score.accuracy >= 0.85) return ['Excellent!', `Strong round at ${entry.n}-back`];
+  if (!state.settings.adaptive) return [score.accuracy >= 0.85 ? 'Excellent!' : 'Nice work!', `${entry.n}-back · ${score.errors} error${score.errors === 1 ? '' : 's'}`];
   if (delta < 0) return ['Keep going!', `Back to ${entry.nextN}-back to build a base`];
-  if (score.accuracy >= 0.6) return ['Nice work!', `${score.errors} error${score.errors === 1 ? '' : 's'}: fewer than 3 raises N`];
+  if (score.accuracy >= 0.85) return ['So close!', closeness || `Strong round at ${entry.n}-back`];
+  if (score.accuracy >= 0.6) return ['Nice work!', closeness || `Holding steady at ${entry.n}-back`];
   return ['Good effort!', 'Every round builds the skill'];
 }
 

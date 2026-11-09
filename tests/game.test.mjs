@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  LETTERS, POSITIONS, COLORS, generateSequence, scoreBlock, nextN, trialsForN, seededRandom, targetPlan,
+  LETTERS, POSITIONS, COLORS, generateSequence, scoreBlock, nextN, trialsForN, seededRandom, targetPlan, levelUpGap,
 } from '../www/js/game.js';
 
 test('block length is base + n', () => {
@@ -143,4 +143,21 @@ test('adaptive rule follows Jaeggi thresholds and scales with block length', () 
   assert.equal(nextN(2, 4, { scorable: 30 }), 3);
   assert.equal(nextN(2, 8, { scorable: 30 }), 2);
   assert.equal(nextN(2, 9, { scorable: 30 }), 1);
+});
+
+test('relaxed rule uses accuracy thresholds', () => {
+  assert.equal(nextN(2, 6, { rule: 'relaxed', accuracy: 0.8 }), 3);
+  assert.equal(nextN(2, 1, { rule: 'relaxed', accuracy: 0.79 }), 2);
+  assert.equal(nextN(2, 9, { rule: 'relaxed', accuracy: 0.49 }), 1);
+  assert.equal(nextN(1, 9, { rule: 'relaxed', accuracy: 0.1 }), 1);
+  assert.equal(nextN(9, 0, { rule: 'relaxed', accuracy: 1 }), 9);
+});
+
+test('level-up gap reports how close a block was', () => {
+  assert.deepEqual(levelUpGap(4, 0.7), { kind: 'errors', target: 3, gap: 2 });
+  assert.deepEqual(levelUpGap(2, 0.9), { kind: 'errors', target: 3, gap: 0 });
+  assert.deepEqual(levelUpGap(6, 0.75, { scorable: 30 }), { kind: 'errors', target: 5, gap: 2 });
+  const r = levelUpGap(5, 0.7, { rule: 'relaxed' });
+  assert.equal(r.kind, 'accuracy');
+  assert.ok(Math.abs(r.gap - 0.1) < 1e-9);
 });

@@ -226,8 +226,15 @@
               </select>
             </label>
             <label class="row-setting">
-              <span>Adaptive N<small>Raise N after fewer than 3 errors, lower it after more than 5</small></span>
+              <span>Adaptive N<small>Change the level automatically after each session</small></span>
               <input type="checkbox" class="switch" data-setting="adaptive">
+            </label>
+            <label class="row-setting">
+              <span>Progression<small>Standard follows the research protocol. Relaxed advances at 80% accuracy, like most training apps.</small></span>
+              <select data-setting="progression">
+                <option value="standard">Standard (fewer than 3 errors)</option>
+                <option value="relaxed">Relaxed (80% accuracy)</option>
+              </select>
             </label>
             <label class="row-setting">
               <span>Starting N</span>
