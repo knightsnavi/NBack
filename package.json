@@ -1,0 +1,14 @@
+{
+  "name": "nback-trainer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dual and triple N-back working-memory trainer as an offline PWA, designed for foldable phones.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8080",
+    "icons": "node scripts/render-icons.mjs",
+    "screens": "node scripts/screenshots.mjs"
+  },
+  "license": "MIT"
+}

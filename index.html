@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en" data-palette="sunset" data-handed="right" data-hinge="on">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>NBack Trainer</title>
+  <meta name="description" content="Dual and triple N-back working-memory training, built for foldable phones. Works offline.">
+  <meta name="theme-color" content="#7c5cff">
+  <meta name="color-scheme" content="light dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app" id="app" data-screen="home">
+  <header class="topbar">
+    <button class="icon-btn" id="btn-back" aria-label="Back" hidden>
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="brand" id="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span class="brand-text" id="brand-text">NBack</span>
+    </div>
+    <div class="topbar-spacer"></div>
+    <nav class="topbar-actions" id="topbar-actions" aria-label="Main">
+      <button class="icon-btn" id="nav-help" aria-label="How to play" title="How to play">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2.9-1.2 1.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>
+      </button>
+      <button class="icon-btn" id="nav-stats" aria-label="Progress" title="Progress">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 19h16M7 16V10M12 16V5M17 16v-3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" id="nav-settings" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="game" id="game">
+    <section class="stage" id="stage" aria-live="off">
+      <div class="board" id="board" role="img" aria-label="3 by 3 grid">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell center" data-index="4">
+          <div class="n-badge" id="n-badge"><span class="n-num" id="n-num">2</span><small>back</small></div>
+          <div class="countdown" id="countdown" hidden></div>
+        </div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+        <div class="board-overlay" id="board-overlay" hidden>
+          <div class="overlay-title" id="overlay-title">Paused</div>
+          <div class="overlay-sub" id="overlay-sub"></div>
+          <button class="btn-primary" id="btn-resume">Resume</button>
+        </div>
+      </div>
+      <div class="stage-alt" id="stage-alt" hidden></div>
+    </section>
+
+    <div class="hinge-gap" aria-hidden="true"></div>
+
+    <section class="side" id="side">
+      <div class="hud" id="hud" hidden>
+        <div class="progress" id="progress" aria-hidden="true"></div>
+        <div class="hud-count" id="hud-count" aria-live="polite">1/22</div>
+        <button class="icon-btn small" id="btn-pause" aria-label="Pause">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn small" id="btn-quit" aria-label="End session">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="actions" id="actions" hidden>
+        <button class="action action-position" id="btn-position" data-stream="position" aria-keyshortcuts="A">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/><rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/></svg></span>
+          <span class="lbl">Position</span>
+          <span class="key">A</span>
+        </button>
+        <button class="action action-color" id="btn-color" data-stream="color" aria-keyshortcuts="F" hidden>
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></span>
+          <span class="lbl">Color</span>
+          <span class="key">F</span>
+        </button>
+        <button class="action action-sound" id="btn-sound" data-stream="sound" aria-keyshortcuts="L">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+          <span class="lbl">Sound</span>
+          <span class="key">L</span>
+        </button>
+      </div>
+
+      <div class="panel" id="panel">
+        <!-- HOME -->
+        <section class="view view-home" id="view-home">
+          <div class="card hero">
+            <div class="hero-ring" id="today-ring"></div>
+            <div class="hero-text">
+              <div class="hero-title" id="today-title">Today</div>
+              <div class="hero-sub" id="today-sub">0 of 5 sessions</div>
+              <div class="hero-streak" id="streak-text">Start a streak today</div>
+            </div>
+          </div>
+
+          <div class="mode-chips" id="mode-chips" role="radiogroup" aria-label="Game mode">
+            <button class="chip" data-mode="position" role="radio" aria-checked="false">Position</button>
+            <button class="chip" data-mode="sound" role="radio" aria-checked="false">Sound</button>
+            <button class="chip" data-mode="dual" role="radio" aria-checked="true">Dual</button>
+            <button class="chip" data-mode="triple" role="radio" aria-checked="false">Triple</button>
+          </div>
+
+          <div class="n-row">
+            <button class="stepper" id="n-minus" aria-label="Lower N">−</button>
+            <div class="n-display"><span id="home-n">2</span>-back <span class="pill" id="adaptive-pill">Adaptive</span></div>
+            <button class="stepper" id="n-plus" aria-label="Raise N">+</button>
+          </div>
+
+          <button class="btn-primary big" id="btn-start">
+            <span>Start session</span>
+            <small id="start-meta">Dual · 2-back · 22 trials · about 1 min</small>
+          </button>
+
+          <div class="card last-card" id="last-card" hidden></div>
+          <div class="insight" id="home-insight"></div>
+        </section>
+
+        <!-- RESULTS -->
+        <section class="view view-results" id="view-results" hidden>
+          <div class="card result-head">
+            <div class="result-emoji" id="res-emoji">🎉</div>
+            <div>
+              <h2 id="res-headline">Level up!</h2>
+              <p id="res-sub">N goes from 2 to 3</p>
+            </div>
+          </div>
+          <div class="card" id="res-streams"></div>
+          <div class="card result-meta" id="res-meta"></div>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-again">Play again</button>
+            <button class="btn-secondary" id="btn-home">Home</button>
+          </div>
+        </section>
+
+        <!-- STATS -->
+        <section class="view view-stats" id="view-stats" hidden>
+          <div class="tiles" id="stats-tiles"></div>
+          <div class="card" id="card-n">
+            <h3>Level trend</h3>
+            <p class="hint">N per session, last 30 sessions</p>
+            <div class="chart-box" id="chart-n"></div>
+          </div>
+          <div class="card">
+            <h3>Accuracy by stream</h3>
+            <p class="hint">Percent correct, last 30 sessions</p>
+            <div class="legend" id="legend-acc"></div>
+            <div class="chart-box" id="chart-acc"></div>
+          </div>
+          <div class="card">
+            <h3>Last two weeks</h3>
+            <p class="hint">Sessions per day against your goal</p>
+            <div class="chart-box" id="chart-days"></div>
+          </div>
+          <div class="card">
+            <h3>Activity</h3>
+            <p class="hint">Last 12 weeks</p>
+            <div class="chart-box" id="chart-heat"></div>
+          </div>
+          <div class="card">
+            <h3>Insights</h3>
+            <ul class="insights" id="insights"></ul>
+          </div>
+          <div class="card">
+            <h3>Personal records</h3>
+            <dl class="records" id="records"></dl>
+          </div>
+          <div class="card">
+            <h3>Achievements <span class="muted" id="ach-count"></span></h3>
+            <div class="achievements" id="achievements"></div>
+          </div>
+          <div class="card">
+            <h3>Session log</h3>
+            <div class="history" id="history-list"></div>
+            <button class="link" id="btn-history-more" hidden>Show more</button>
+          </div>
+          <div class="card">
+            <h3>Your data</h3>
+            <p class="hint">Everything is stored on this device. Back it up or move it to another device.</p>
+            <div class="btn-row wrap">
+              <button class="btn-secondary" id="btn-export-json">Export backup</button>
+              <button class="btn-secondary" id="btn-export-csv">Export CSV</button>
+              <button class="btn-secondary" id="btn-import">Import backup</button>
+              <input type="file" id="file-import" accept="application/json,.json" hidden>
+              <button class="btn-danger" id="btn-clear">Delete all data</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="view view-settings" id="view-settings" hidden>
+          <div class="card">
+            <h3>Training</h3>
+            <label class="row-setting">
+              <span>Mode</span>
+              <select data-setting="mode">
+                <option value="position">Position only</option>
+                <option value="sound">Sound only</option>
+                <option value="dual">Dual (position + sound)</option>
+                <option value="triple">Triple (+ color)</option>
+              </select>
+            </label>
+            <label class="row-setting">
+              <span>Adaptive N<small>Raise N after fewer than 3 errors, lower it after more than 5</small></span>
+              <input type="checkbox" class="switch" data-setting="adaptive">
+            </label>
+            <label class="row-setting">
+              <span>Starting N</span>
+              <input type="number" min="1" max="9" step="1" data-setting="n" class="num">
+            </label>
+            <label class="row-setting">
+              <span>Session length</span>
+              <select data-setting="length">
+                <option value="short">Short (15 + N trials)</option>
+                <option value="standard">Standard (20 + N trials)</option>
+                <option value="long">Long (30 + N trials)</option>
+              </select>
+            </label>
+            <label class="row-setting col">
+              <span>Pace <b id="interval-val">3.0 s</b> per item</span>
+              <input type="range" min="1500" max="5000" step="100" data-setting="interval">
+            </label>
+            <label class="row-setting col">
+              <span>Stimulus shown for <b id="stimulus-val">0.5 s</b></span>
+              <input type="range" min="300" max="1500" step="50" data-setting="stimulusMs">
+            </label>
+            <label class="row-setting">
+              <span>Daily goal<small>Sessions per day</small></span>
+              <input type="number" min="0" max="30" step="1" data-setting="dailyGoal" class="num">
+            </label>
+          </div>
+
+          <div class="card">
+            <h3>Feedback</h3>
+            <label class="row-setting">
+              <span>Right / wrong colours<small>Buttons flash on each press and pulse on a miss</small></span>
+              <input type="checkbox" class="switch" data-setting="feedback">
+            </label>
+            <label class="row-setting">
+              <span>Vibration</span>
+              <input type="checkbox" class="switch" data-setting="haptics">
+            </label>
+            <label class="row-setting">
+              <span>Tap tones</span>
+              <input type="checkbox" class="switch" data-setting="tones">
+            </label>
+            <label class="row-setting">
+              <span>Letters spoken aloud</span>
+              <input type="checkbox" class="switch" data-setting="sound">
+            </label>
+            <label class="row-setting">
+              <span>Voice</span>
+              <select data-setting="voice">
+                <option value="recorded">Recorded voice</option>
+                <option value="device">Device speech</option>
+              </select>
+            </label>
+            <label class="row-setting col">
+              <span>Volume</span>
+              <input type="range" min="0" max="1" step="0.05" data-setting="volume">
+            </label>
+            <label class="row-setting">
+              <span>Colour names on the cell<small>Helps if colours are hard to tell apart</small></span>
+              <input type="checkbox" class="switch" data-setting="colorNames">
+            </label>
+          </div>
+
+          <div class="card">
+            <h3>Daily reminder</h3>
+            <label class="row-setting">
+              <span>Remind me to train</span>
+              <input type="checkbox" class="switch" data-setting="reminders.enabled">
+            </label>
+            <label class="row-setting">
+              <span>Time</span>
+              <input type="time" data-setting="reminders.time">
+            </label>
+            <p class="hint" id="reminder-status"></p>
+            <div class="btn-row wrap">
+              <button class="btn-secondary" id="btn-reminder-test">Send test</button>
+              <button class="btn-secondary" id="btn-reminder-ics">Add to calendar</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Appearance</h3>
+            <label class="row-setting">
+              <span>Theme</span>
+              <select data-setting="theme">
+                <option value="auto">Match device</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <div class="row-setting col">
+              <span>Colours</span>
+              <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour palette">
+                <button class="swatch" data-palette="sunset" role="radio" aria-label="Sunset"></button>
+                <button class="swatch" data-palette="ocean" role="radio" aria-label="Ocean"></button>
+                <button class="swatch" data-palette="candy" role="radio" aria-label="Candy"></button>
+                <button class="swatch" data-palette="forest" role="radio" aria-label="Forest"></button>
+              </div>
+            </div>
+            <label class="row-setting">
+              <span>Main hand<small>Puts the Sound button under that thumb</small></span>
+              <select data-setting="handed">
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+              </select>
+            </label>
+            <label class="row-setting">
+              <span>Fold-aware layout<small>Keep the grid and controls off the hinge when half-open</small></span>
+              <input type="checkbox" class="switch" data-setting="hingeAware">
+            </label>
+          </div>
+
+          <div class="card about">
+            <h3>About</h3>
+            <p>NBack Trainer follows the dual N-back task from Jaeggi et al. (2008): a 3×3 grid, eight spoken letters, 20 + N trials per block, and an adaptive level. Triple mode adds a colour stream.</p>
+            <p>Keyboard: <kbd>A</kbd> position, <kbd>F</kbd> colour, <kbd>L</kbd> sound, <kbd>Space</kbd> pause, <kbd>Esc</kbd> end.</p>
+            <p class="muted" id="posture-debug"></p>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<dialog class="dialog" id="dlg-howto">
+  <h2>How to play</h2>
+  <ol class="howto">
+    <li>
+      <div class="mini-grid" aria-hidden="true"><i></i><i></i><i class="on"></i><i></i><i class="c">2</i><i></i><i></i><i></i><i></i></div>
+      <p>Every few seconds a square lights up and a letter is spoken.</p>
+    </li>
+    <li>
+      <div class="mini-seq" aria-hidden="true"><span>K</span><span>S</span><span class="now">K</span></div>
+      <p>Press <b>Sound</b> when the letter is the same as <b>N steps ago</b>. Press <b>Position</b> when the square is the same. Both can match at once.</p>
+    </li>
+    <li>
+      <div class="mini-btns" aria-hidden="true"><b class="p">Position</b><b class="s">Sound</b></div>
+      <p>Do nothing when there is no match. Fewer than 3 errors raises N next time, more than 5 lowers it.</p>
+    </li>
+  </ol>
+  <p class="hint">On a foldable, half-open the phone and set it down: the grid sits on the top screen and the buttons on the bottom.</p>
+  <form method="dialog"><button class="btn-primary" id="btn-howto-ok" value="ok">Got it</button></form>
+</dialog>
+
+<dialog class="dialog" id="dlg-confirm">
+  <h2 id="confirm-title">Are you sure?</h2>
+  <p id="confirm-text"></p>
+  <form method="dialog" class="btn-row">
+    <button class="btn-secondary" value="cancel">Cancel</button>
+    <button class="btn-danger" id="confirm-ok" value="ok">Confirm</button>
+  </form>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
