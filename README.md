@@ -38,6 +38,10 @@ square, with optional colour names for players who find colours hard to tell apa
 - **Thumb-first controls**: large stream-coloured buttons in the thumb zone, handedness switch,
   keyboard shortcuts (`A` position, `F` colour, `L` sound, `Space` pause, `Esc` end), haptics,
   tap tones, immediate right/wrong feedback, miss indicators, and a per-trial progress strip.
+- **Explainer video**: a two-minute narrated animation of six 2-back turns, with the "two
+  turns ago" comparison drawn on a timeline and the rolling-pair memory trick. Offered on first
+  launch, on the home screen for new players, and under Settings → Learn. Built from
+  `scripts/explainer/` (HTML scenes rendered frame by frame with Chromium, mixed with ffmpeg).
 - **Guided tutorial with voice-over**: on first launch the app offers a two-minute interactive
   walkthrough on the real board (position match, sound match, both, no match, what N means, then
   a hinted practice round). Every step is narrated by the same voice that speaks the letters, with
@@ -118,6 +122,7 @@ node scripts/render-icons.mjs   # regenerate web PNG icons from www/assets/icon.
 node scripts/android-icons.mjs  # regenerate Android launcher icons, notification icon and splash screens
 node scripts/screenshots.mjs    # walk every screen on Z Fold viewports (needs the server on :8080)
 TUTORIAL=cover,tabletop node scripts/screenshots.mjs   # drive the guided tutorial end to end
+node scripts/explainer/build.mjs                        # rebuild www/video/2back.mp4 (PREVIEW=1 for stills)
 ```
 
 The engine in `www/js/game.js` is pure and fully covered by `tests/game.test.mjs`. Layout decisions

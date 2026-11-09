@@ -125,6 +125,8 @@
           <div class="mode-chips" id="mode-chips" role="radiogroup" aria-label="Game mode">
             <button class="chip" data-mode="dual" role="radio" aria-checked="true">Dual <small>position + sound</small></button>
             <button class="chip" data-mode="triple" role="radio" aria-checked="false">Triple <small>+ color</small></button>
+            <button class="chip" data-mode="position" role="radio" aria-checked="false">Position <small>squares only</small></button>
+            <button class="chip" data-mode="sound" role="radio" aria-checked="false">Sound <small>letters only</small></button>
           </div>
 
           <div class="n-row">
@@ -138,6 +140,11 @@
             <small id="start-meta">Dual · 2-back · 22 trials · about 1 min</small>
           </button>
 
+          <button class="video-card compact" id="btn-video-home" hidden>
+            <img src="video/2back.jpg" alt="" width="40" height="71">
+            <span><b>Confused by “2-back”?</b><small>Watch the two-minute explainer</small></span>
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor" opacity=".15"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+          </button>
           <div class="card last-card" id="last-card" hidden></div>
           <div class="insight" id="home-insight"></div>
         </section>
@@ -357,6 +364,11 @@
               <button class="btn-primary" id="btn-tutorial-settings">Run the tutorial</button>
               <button class="btn-secondary" id="btn-howto-settings">How to play</button>
             </div>
+            <button class="video-card" id="btn-video-settings">
+              <img src="video/2back.jpg" alt="" width="72" height="128">
+              <span><b>Watch: how 2-back works</b><small>Two minutes, narrated. The “two turns ago” idea, six example turns, and the memory trick.</small></span>
+              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor" opacity=".15"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+            </button>
           </div>
 
           <div class="card about">
@@ -391,7 +403,20 @@
   <p class="hint">On a foldable, half-open the phone and set it down: the grid sits on the top screen and the buttons on the bottom.</p>
   <form method="dialog" class="btn-row">
     <button class="btn-secondary" id="btn-howto-ok" value="ok">Got it</button>
+    <button class="btn-secondary" value="video">Watch video</button>
     <button class="btn-primary" id="btn-howto-tutorial" value="tutorial">Start tutorial</button>
+  </form>
+</dialog>
+
+<dialog class="dialog video-dialog" id="dlg-video">
+  <div class="video-head">
+    <h2>How 2-back works</h2>
+    <form method="dialog"><button class="icon-btn" value="close" aria-label="Close"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></form>
+  </div>
+  <video id="video-2back" controls playsinline preload="metadata" poster="video/2back.jpg" src="video/2back.mp4"></video>
+  <form method="dialog" class="btn-row">
+    <button class="btn-secondary" value="close">Close</button>
+    <button class="btn-primary" value="tutorial">Try the tutorial</button>
   </form>
 </dialog>
 
@@ -401,7 +426,8 @@
   <p>A two-minute working-memory workout. Want a quick guided walkthrough on the real board before your first session?</p>
   <p class="hint">You can run it again any time from Settings.</p>
   <form method="dialog" class="btn-row">
-    <button class="btn-secondary" value="skip">Skip for now</button>
+    <button class="btn-secondary" value="skip">Skip</button>
+    <button class="btn-secondary" value="video">Watch video</button>
     <button class="btn-primary" value="tutorial" autofocus>Start tutorial</button>
   </form>
 </dialog>

@@ -1,5 +1,5 @@
 /* NBack Trainer service worker: offline app shell + daily reminder check. */
-const VERSION = 'nback-v3';
+const VERSION = 'nback-v4';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/styles.css',
@@ -24,6 +24,7 @@ const ASSETS = [
   './audio/tutorial/n_explained.mp3',
   './audio/tutorial/practice_intro.mp3',
   './audio/tutorial/practice_done.mp3',
+  './video/2back.mp4', './video/2back.jpg',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png', './assets/badge.png',
 ];
 const CONFIG_CACHE = 'nback-config';

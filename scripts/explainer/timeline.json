@@ -1,0 +1,68 @@
+{
+  "total": 113.66326699999999,
+  "timeline": [
+    {
+      "key": "intro",
+      "start": 0.4,
+      "dur": 13.211837000000001,
+      "narration": "/home/user/NBack/scripts/explainer/audio/intro.mp3",
+      "narAt": 0.8
+    },
+    {
+      "key": "t1",
+      "start": 13.611837000000001,
+      "dur": 9.18898,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t1.mp3",
+      "narAt": 14.011837000000002
+    },
+    {
+      "key": "t2",
+      "start": 22.800817000000002,
+      "dur": 9.998776000000001,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t2.mp3",
+      "narAt": 23.200817
+    },
+    {
+      "key": "t3",
+      "start": 32.799593,
+      "dur": 15.118776,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t3.mp3",
+      "narAt": 33.199593
+    },
+    {
+      "key": "t4",
+      "start": 47.918369,
+      "dur": 13.264082,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t4.mp3",
+      "narAt": 48.318369
+    },
+    {
+      "key": "t5",
+      "start": 61.182451,
+      "dur": 10.913061,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t5.mp3",
+      "narAt": 61.582451
+    },
+    {
+      "key": "t6",
+      "start": 72.095512,
+      "dur": 12.428163000000001,
+      "narration": "/home/user/NBack/scripts/explainer/audio/t6.mp3",
+      "narAt": 72.495512
+    },
+    {
+      "key": "trick",
+      "start": 84.523675,
+      "dur": 16.633878,
+      "narration": "/home/user/NBack/scripts/explainer/audio/trick.mp3",
+      "narAt": 84.923675
+    },
+    {
+      "key": "outro",
+      "start": 101.157553,
+      "dur": 11.905714000000001,
+      "narration": "/home/user/NBack/scripts/explainer/audio/outro.mp3",
+      "narAt": 101.557553
+    }
+  ]
+}

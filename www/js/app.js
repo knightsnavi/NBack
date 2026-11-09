@@ -279,7 +279,6 @@ function renderHome() {
   pill.textContent = s.adaptive ? 'Adaptive' : 'Manual';
   pill.classList.toggle('off', !s.adaptive);
   for (const chip of $$('#mode-chips .chip')) chip.setAttribute('aria-checked', String(chip.dataset.mode === s.mode));
-  $('#mode-chips').title = s.mode === 'position' || s.mode === 'sound' ? `${MODE_LABEL[s.mode]}-only practice is set in Settings` : '';
   $('#start-meta').textContent = sessionMeta();
 
   const goal = s.dailyGoal;
@@ -304,6 +303,7 @@ function renderHome() {
     card.hidden = true;
   }
   $('#home-insight').textContent = ST.insights(sum, state.history, s)[0] || '';
+  $('#btn-video-home').hidden = Boolean(state.meta.watchedVideo) || sum.sessions >= 8;
 }
 
 /* ------------------------------------------------------------------ */
@@ -588,6 +588,16 @@ function afterVoice(cb, fallbackMs = 1000) {
     cur.onerror = () => { clearTimeout(safety); fire(); };
   };
   watch();
+}
+
+function openVideo() {
+  for (const dlg of $$('dialog[open]')) if (dlg.id !== 'dlg-video') dlg.close();
+  if (state.runner) pauseSession();
+  const dlg = $('#dlg-video');
+  dlg.showModal();
+  const vid = $('#video-2back');
+  vid.currentTime = 0;
+  vid.play().catch(() => {});
 }
 
 function renderVoiceToggle() {
@@ -1021,13 +1031,28 @@ function bind() {
   });
   $('#btn-history-more').addEventListener('click', () => { state.historyShown += 25; renderHistoryList(); });
   $('#dlg-howto').addEventListener('close', () => {
-    if ($('#dlg-howto').returnValue === 'tutorial') startTutorial();
+    const v = $('#dlg-howto').returnValue;
+    if (v === 'tutorial') startTutorial();
+    else if (v === 'video') openVideo();
     else S.setOnboarded();
   });
   $('#dlg-welcome').addEventListener('close', () => {
-    if ($('#dlg-welcome').returnValue === 'tutorial') startTutorial();
+    const v = $('#dlg-welcome').returnValue;
+    if (v === 'tutorial') startTutorial();
+    else if (v === 'video') openVideo();
     else { S.setOnboarded(); toast('You can run the tutorial any time from Settings → Learn.', 3200); }
   });
+  $('#dlg-video').addEventListener('close', () => {
+    const vid = $('#video-2back');
+    vid.pause();
+    state.meta.watchedVideo = true;
+    S.saveMeta(state.meta);
+    S.setOnboarded();
+    renderHome();
+    if ($('#dlg-video').returnValue === 'tutorial') startTutorial();
+  });
+  $('#btn-video-settings').addEventListener('click', openVideo);
+  $('#btn-video-home').addEventListener('click', openVideo);
   $('#btn-tutorial-settings').addEventListener('click', startTutorial);
   $('#btn-howto-settings').addEventListener('click', () => $('#dlg-howto').showModal());
   $('#coach-skip').addEventListener('click', () => { if (state.tutorial) state.tutorial.skip(); });

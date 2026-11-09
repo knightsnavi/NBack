@@ -17,3 +17,10 @@ android/app/release/
 *.keystore
 *.jks
 android/keystore.properties
+
+# explainer video build scratch
+scripts/explainer/frames/
+scripts/explainer/preview/
+scripts/explainer/mix.wav
+scripts/explainer/audio/*.raw.mp3
+scripts/explainer/audio/urls.txt
