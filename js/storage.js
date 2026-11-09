@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   palette: 'sunset',     // 'sunset' | 'ocean' | 'candy' | 'forest'
   handed: 'right',       // which side the primary thumb is on
   hingeAware: true,      // split the layout around the fold when half-open
+  tutorialVoice: true,   // spoken explanations in the guided tutorial
   dailyGoal: 5,          // sessions per day
   reminders: { enabled: false, time: '19:00' },
 });

@@ -515,6 +515,60 @@ function finishSession(responses) {
 /* ------------------------------------------------------------------ */
 /* tutorial                                                            */
 /* ------------------------------------------------------------------ */
+const narration = { el: null, timer: null, key: null };
+
+function stopNarration() {
+  clearTimeout(narration.timer);
+  narration.timer = null;
+  if (narration.el) {
+    narration.el.pause();
+    narration.el.onended = null;
+    narration.el = null;
+  }
+  $('#coach-voice').classList.remove('speaking');
+}
+
+function narrate(key, delay = 0) {
+  stopNarration();
+  narration.key = key;
+  if (!key || !state.settings.tutorialVoice) return;
+  const play = () => {
+    const el = new Audio(`audio/tutorial/${key}.mp3`);
+    el.volume = Math.min(1, state.settings.volume);
+    narration.el = el;
+    $('#coach-voice').classList.add('speaking');
+    el.onended = () => { $('#coach-voice').classList.remove('speaking'); if (narration.el === el) narration.el = null; };
+    el.play().catch(() => { $('#coach-voice').classList.remove('speaking'); });
+  };
+  if (delay > 0) narration.timer = setTimeout(play, delay);
+  else play();
+}
+
+/** Run `cb` when the current narration finishes; with voice off, after `fallbackMs`. */
+function afterVoice(cb, fallbackMs = 1000) {
+  const el = narration.el;
+  const pending = narration.timer != null;
+  if (!state.settings.tutorialVoice || (!el && !pending)) { setTimeout(cb, fallbackMs); return; }
+  let done = false;
+  const fire = () => { if (done) return; done = true; cb(); };
+  const safety = setTimeout(fire, 25000);
+  const watch = () => {
+    const cur = narration.el;
+    if (!cur) { setTimeout(() => { if (narration.el) watch(); else { clearTimeout(safety); setTimeout(fire, 400); } }, 300); return; }
+    const prev = cur.onended;
+    cur.onended = (ev) => { if (prev) prev(ev); clearTimeout(safety); setTimeout(fire, 500); };
+    cur.onerror = () => { clearTimeout(safety); fire(); };
+  };
+  watch();
+}
+
+function renderVoiceToggle() {
+  const btn = $('#coach-voice');
+  const on = state.settings.tutorialVoice;
+  btn.setAttribute('aria-pressed', String(on));
+  btn.setAttribute('aria-label', on ? 'Voice-over on' : 'Voice-over off');
+}
+
 async function startTutorial() {
   if (state.runner) { state.runner.stop(); state.runner = null; }
   await audio.unlock();
@@ -534,7 +588,8 @@ async function startTutorial() {
     },
     clear: () => clearCells(),
     hint: (streams) => { for (const btn of $$('.action')) btn.classList.toggle('hint', streams.includes(btn.dataset.stream)); },
-    coach: ({ step, steps, title, text, button, onButton }) => {
+    coach: ({ step, steps, title, text, button, onButton, voice, voiceDelay }) => {
+      narrate(voice, voiceDelay);
       $('#coach-steps').innerHTML = Array.from({ length: steps }, (_, i) => `<i class="${i <= step ? 'done' : ''}"></i>`).join('');
       $('#coach-title').textContent = title;
       $('#coach-text').textContent = text;
@@ -546,13 +601,16 @@ async function startTutorial() {
     feedback: (stream, ok) => { if (state.settings.feedback) flash(stream, ok ? 'good' : 'bad'); buzz(ok ? 12 : [30, 40, 30]); },
     sfx: (kind) => { if (state.settings.tones) audio.sfx(kind); },
     badge: (n) => { $('#n-num').textContent = n; },
+    afterVoice: (cb, fallbackMs) => afterVoice(cb, fallbackMs),
     done: (reason) => endTutorial(reason),
   };
+  renderVoiceToggle();
   state.tutorial = createTutorial(ui);
   state.tutorial.start();
 }
 
 function endTutorial(reason) {
+  stopNarration();
   state.tutorial = null;
   app.dataset.tutorial = 'off';
   $('#coach').hidden = true;
@@ -930,6 +988,14 @@ function bind() {
   $('#btn-tutorial-settings').addEventListener('click', startTutorial);
   $('#btn-howto-settings').addEventListener('click', () => $('#dlg-howto').showModal());
   $('#coach-skip').addEventListener('click', () => { if (state.tutorial) state.tutorial.skip(); });
+  $('#coach-voice').addEventListener('click', () => {
+    state.settings.tutorialVoice = !state.settings.tutorialVoice;
+    saveSettings();
+    renderVoiceToggle();
+    renderSettings();
+    if (state.settings.tutorialVoice) narrate(narration.key); else stopNarration();
+    toast(state.settings.tutorialVoice ? 'Voice-over on' : 'Voice-over off', 1200);
+  });
 
   document.addEventListener('keydown', (ev) => {
     if (ev.repeat) return;

@@ -34,10 +34,11 @@ square, with optional colour names for players who find colours hard to tell apa
 - **Thumb-first controls**: large stream-coloured buttons in the thumb zone, handedness switch,
   keyboard shortcuts (`A` position, `F` colour, `L` sound, `Space` pause, `Esc` end), haptics,
   tap tones, immediate right/wrong feedback, miss indicators, and a per-trial progress strip.
-- **Guided tutorial**: on first launch the app offers a two-minute interactive walkthrough on
-  the real board (position match, sound match, both, no match, what N means, then a hinted
-  practice round). It can be rerun any time from Settings → Learn, and a written "How to play"
-  reference is one tap away.
+- **Guided tutorial with voice-over**: on first launch the app offers a two-minute interactive
+  walkthrough on the real board (position match, sound match, both, no match, what N means, then
+  a hinted practice round). Every step is narrated by the same voice that speaks the letters, with
+  a mute toggle on the coach card and in Settings. It can be rerun any time from Settings → Learn,
+  and a written "How to play" reference is one tap away.
 - **Recorded voice and sound design**: the eight letters and every UI sound (correct, wrong,
   miss, countdown tick, go, level up, session complete, achievement) were generated once with
   ElevenLabs and ship as small MP3 files, decoded through Web Audio for low-latency playback.

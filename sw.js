@@ -1,5 +1,5 @@
 /* NBack Trainer service worker: offline app shell + daily reminder check. */
-const VERSION = 'nback-v2';
+const VERSION = 'nback-v3';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/styles.css',
@@ -9,6 +9,21 @@ const ASSETS = [
   './audio/Q.mp3', './audio/R.mp3', './audio/S.mp3', './audio/T.mp3',
   './audio/sfx/good.mp3', './audio/sfx/bad.mp3', './audio/sfx/missed.mp3', './audio/sfx/tick.mp3',
   './audio/sfx/go.mp3', './audio/sfx/levelup.mp3', './audio/sfx/complete.mp3', './audio/sfx/achievement.mp3',
+  './audio/tutorial/welcome.mp3',
+  './audio/tutorial/watch.mp3',
+  './audio/tutorial/pos_match.mp3',
+  './audio/tutorial/pos_ok.mp3',
+  './audio/tutorial/pos_wrong.mp3',
+  './audio/tutorial/snd_match.mp3',
+  './audio/tutorial/snd_ok.mp3',
+  './audio/tutorial/snd_wrong.mp3',
+  './audio/tutorial/both.mp3',
+  './audio/tutorial/both_ok.mp3',
+  './audio/tutorial/none.mp3',
+  './audio/tutorial/none_wrong.mp3',
+  './audio/tutorial/n_explained.mp3',
+  './audio/tutorial/practice_intro.mp3',
+  './audio/tutorial/practice_done.mp3',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png', './assets/badge.png',
 ];
 const CONFIG_CACHE = 'nback-config';

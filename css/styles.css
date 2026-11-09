@@ -448,7 +448,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 32px; }
 .coach-steps { display: flex; gap: 4px; }
 .coach-steps i { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in oklab, var(--text) 10%, transparent); }
 .coach-steps i.done { background: var(--accent); }
+.coach-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .coach-title { font-weight: 900; font-size: 1.05rem; }
+#coach-voice { width: 36px; height: 36px; color: var(--accent); }
+#coach-voice .slash { display: none; }
+#coach-voice[aria-pressed="false"] { color: var(--muted); }
+#coach-voice[aria-pressed="false"] .waves { display: none; }
+#coach-voice[aria-pressed="false"] .slash { display: block; }
+#coach-voice.speaking .waves { animation: speak 1s ease-in-out infinite; }
+@keyframes speak { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 .coach-text { font-size: .93rem; line-height: 1.4; }
 .coach-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
 .coach-actions .btn-primary { flex: 0 0 auto; min-height: 44px; padding: 8px 18px; font-size: .95rem; }

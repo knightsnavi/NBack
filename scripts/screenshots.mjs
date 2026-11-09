@@ -187,6 +187,8 @@ export async function tutorialWalk(vpName) {
   const page = await context.newPage();
   page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   page.on('pageerror', e => errs.push(e.message));
+  const narrated = new Set();
+  page.on('request', r => { const m = r.url().match(/audio\/tutorial\/([a-z_]+)\.mp3/); if (m) narrated.add(m[1]); });
   const q = vp.feature ? `?posture=${vp.feature.orientation === 'horizontal' ? 'tabletop' : 'book'}&hinge=${vp.feature.maskLength}` : '';
   await page.goto(BASE + q);
   await page.waitForSelector('#dlg-welcome[open]', { timeout: 4000 });
@@ -204,7 +206,7 @@ export async function tutorialWalk(vpName) {
     }
   };
   let guard = 0;
-  while (guard++ < 60) {
+  while (guard++ < 140) {
     const title = await page.textContent('#coach-title');
     const nextVisible = await page.isVisible('#coach-next');
     if (title.startsWith('Practice done')) break;
@@ -226,6 +228,7 @@ export async function tutorialWalk(vpName) {
   const screen = await page.getAttribute('#app', 'data-screen');
   const onboarded = await page.evaluate(() => localStorage.getItem('nback.onboarded.v1'));
   console.log(`  tutorial finished → screen ${screen}, onboarded=${onboarded}, loops=${guard}`);
+  console.log(`  narration lines requested (${narrated.size}): ${[...narrated].join(', ')}`);
   await b.close();
   if (errs.length) { console.log('CONSOLE ERRORS', errs); process.exit(1); }
 }
