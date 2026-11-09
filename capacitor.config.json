@@ -1,0 +1,15 @@
+{
+  "appId": "com.knightsnavi.nback",
+  "appName": "NBack",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#fff4e6",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_nback",
+      "iconColor": "#7c5cff"
+    }
+  }
+}

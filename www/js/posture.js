@@ -14,8 +14,19 @@
 //  --seg-a-w / --hinge-w  (book: width of left segment and of the fold)
 
 const root = document.documentElement;
+let externalSegments = null;
+let externalKnown = false;
+let refresh = null;
+
+/** Native shells call this with two rects (CSS px) when half-open, or null when flat/closed. */
+export function setExternalSegments(segments) {
+  externalSegments = segments && segments.length > 1 ? segments : null;
+  externalKnown = true;
+  if (refresh) refresh();
+}
 
 function readSegments() {
+  if (externalKnown) return externalSegments;
   const params = new URLSearchParams(location.search);
   const forced = params.get('posture');
   if (forced === 'tabletop' || forced === 'book') {
@@ -159,6 +170,7 @@ export function watchPosture(onChange, options = {}) {
     if (changed && onChange) onChange(info, previous);
     previous = info;
   };
+  refresh = update;
   window.addEventListener('resize', update);
   window.addEventListener('orientationchange', update);
   if (window.visualViewport) {

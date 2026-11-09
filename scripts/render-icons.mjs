@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const svg = readFileSync(path.join(rootDir, 'assets/icon.svg'), 'utf8');
+const svg = readFileSync(path.join(rootDir, 'www/assets/icon.svg'), 'utf8');
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
@@ -16,7 +16,7 @@ async function render(size, file, { maskable = false } = {}) {
     : `<div style="width:${size}px;height:${size}px">${svg}</div>`;
   await page.setContent(`<html><body style="margin:0;background:transparent">${inner}</body></html>`);
   await page.locator('svg').first().evaluate((el, s) => { el.setAttribute('width', s); el.setAttribute('height', s); }, maskable ? Math.round(size * 0.8) : size);
-  await page.screenshot({ path: path.join(rootDir, 'assets', file), omitBackground: !maskable, clip: { x: 0, y: 0, width: size, height: size } });
+  await page.screenshot({ path: path.join(rootDir, 'www/assets', file), omitBackground: !maskable, clip: { x: 0, y: 0, width: size, height: size } });
   console.log('wrote', file);
 }
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LETTERS, POSITIONS, COLORS, generateSequence, scoreBlock, nextN, trialsForN, seededRandom, targetPlan,
-} from '../js/game.js';
+} from '../www/js/game.js';
 
 test('block length is base + n', () => {
   assert.equal(trialsForN(1), 21);

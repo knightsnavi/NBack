@@ -7,6 +7,8 @@ import { ACHIEVEMENTS, evaluate } from './achievements.js';
 import { lineChart, barChart, heatmap, ring } from './charts.js';
 import * as R from './reminders.js';
 import { createTutorial } from './tutorial.js';
+import { setExternalSegments } from './posture.js';
+import * as N from './native.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -145,7 +147,13 @@ function toast(msg, ms = 2600) {
 }
 
 function buzz(pattern) {
-  if (!state.settings.haptics || !navigator.vibrate) return;
+  if (!state.settings.haptics) return;
+  if (N.isNative) {
+    const kind = Array.isArray(pattern) ? (pattern.length > 3 ? 'levelup' : 'bad') : pattern >= 40 ? 'missed' : pattern >= 20 ? 'good' : 'tap';
+    N.haptic(kind);
+    return;
+  }
+  if (!navigator.vibrate) return;
   try { navigator.vibrate(pattern); } catch { /* ignore */ }
 }
 
@@ -194,6 +202,11 @@ function applySettings() {
   $('#n-num').textContent = s.n;
   renderHome();
   renderSettings();
+  if (N.isNative) {
+    const trainedToday = state.history.some(h => S.dayKey(h.ts) === S.dayKey());
+    if (s.reminders.enabled) N.scheduleReminder(s.reminders.time, trainedToday); else N.cancelReminder();
+    N.setStatusBar(root.dataset.theme === 'dark' || (s.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+  }
   R.schedule(s, () => state.history, onReminderFired);
   R.syncConfig({
     enabled: s.reminders.enabled,
@@ -854,6 +867,9 @@ function renderReminderStatus() {
   const perm = R.permission();
   if (!s.reminders.enabled) {
     el.textContent = 'Off. Turn it on and allow notifications when asked.';
+  } else if (N.isNative) {
+    const next = new Date(R.nextFireTime(s.reminders.time));
+    el.textContent = `Scheduled on this device for ${next.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}, then daily. It moves to the next day once you have trained.`;
   } else if (!sup.notifications) {
     el.textContent = 'This browser cannot show notifications. Use "Add to calendar" for a reliable daily alarm.';
   } else if (perm === 'denied') {
@@ -877,7 +893,7 @@ async function onSettingChange(el) {
   if (path === 'dailyGoal') value = Math.min(30, Math.max(0, Math.round(value || 0)));
   setPath(state.settings, path, value);
   if (path === 'reminders.enabled' && value) {
-    const perm = await R.requestPermission();
+    const perm = N.isNative ? await N.notificationPermission(true) : await R.requestPermission();
     if (perm !== 'granted') toast('Notifications were not allowed. The calendar option still works.', 3500);
   }
   saveSettings();
@@ -928,6 +944,13 @@ function bind() {
     sw.addEventListener('click', () => { state.settings.palette = sw.dataset.palette; saveSettings(); applySettings(); });
   }
   $('#btn-reminder-test').addEventListener('click', async () => {
+    if (N.isNative) {
+      const perm = await N.notificationPermission(true);
+      if (perm !== 'granted') { toast('Notifications are not allowed for this app.'); renderReminderStatus(); return; }
+      toast((await N.testNotification()) ? 'Test notification arrives in a moment' : 'Could not schedule a notification');
+      renderReminderStatus();
+      return;
+    }
     const perm = await R.requestPermission();
     if (perm !== 'granted') { toast('Notifications are not allowed in this browser.'); renderReminderStatus(); return; }
     const ok = await R.showNotification('NBack reminder test', 'This is what your daily reminder looks like.');
@@ -1037,7 +1060,7 @@ function bind() {
 }
 
 async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  if (N.isNative || !('serviceWorker' in navigator) || location.protocol === 'file:') return;
   try {
     const reg = await navigator.serviceWorker.register('./sw.js');
     reg.addEventListener('updatefound', () => {
@@ -1050,8 +1073,23 @@ async function registerServiceWorker() {
   } catch { /* offline support is optional */ }
 }
 
+function initNative() {
+  if (!N.isNative) return;
+  root.dataset.native = 'android';
+  N.watchFold(segments => setExternalSegments(segments));
+  N.onBackButton(() => {
+    const open = $$('dialog[open]');
+    if (open.length) { open[open.length - 1].close(); return true; }
+    if (state.tutorial) { state.tutorial.skip(); return true; }
+    if (state.screen === 'play') { if (state.runner && !state.runner.paused) pauseSession(); else quitSession(); return true; }
+    if (state.screen !== 'home') { show('home'); return true; }
+    return false;
+  });
+}
+
 function init() {
   bind();
+  initNative();
   applySettings();
   show('home');
   registerServiceWorker();

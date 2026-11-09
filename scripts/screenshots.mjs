@@ -10,6 +10,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = path.join(rootDir, 'screenshots');
 mkdirSync(outDir, { recursive: true });
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8080/';
+// the local server must serve the www/ folder: npm start
 const SCALE = Number(process.env.SCALE || 1);
 
 // Galaxy Z Fold (CSS px, approx): cover 360x880, inner 725x870

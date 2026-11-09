@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NBack</string>
+    <string name="title_activity_main">NBack</string>
+    <string name="package_name">com.knightsnavi.nback</string>
+    <string name="custom_url_scheme">com.knightsnavi.nback</string>
+</resources>
