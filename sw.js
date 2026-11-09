@@ -1,12 +1,14 @@
 /* NBack Trainer service worker: offline app shell + daily reminder check. */
-const VERSION = 'nback-v1';
+const VERSION = 'nback-v2';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/styles.css',
   './js/app.js', './js/game.js', './js/audio.js', './js/posture.js', './js/storage.js',
-  './js/stats.js', './js/achievements.js', './js/charts.js', './js/reminders.js',
+  './js/stats.js', './js/achievements.js', './js/charts.js', './js/reminders.js', './js/tutorial.js',
   './audio/C.mp3', './audio/H.mp3', './audio/K.mp3', './audio/L.mp3',
   './audio/Q.mp3', './audio/R.mp3', './audio/S.mp3', './audio/T.mp3',
+  './audio/sfx/good.mp3', './audio/sfx/bad.mp3', './audio/sfx/missed.mp3', './audio/sfx/tick.mp3',
+  './audio/sfx/go.mp3', './audio/sfx/levelup.mp3', './audio/sfx/complete.mp3', './audio/sfx/achievement.mp3',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png', './assets/badge.png',
 ];
 const CONFIG_CACHE = 'nback-config';

@@ -6,6 +6,7 @@ import * as ST from './stats.js';
 import { ACHIEVEMENTS, evaluate } from './achievements.js';
 import { lineChart, barChart, heatmap, ring } from './charts.js';
 import * as R from './reminders.js';
+import { createTutorial } from './tutorial.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -26,6 +27,8 @@ const state = {
   pausedMs: 0,
   posture: null,
   historyShown: 15,
+  tutorial: null,
+  lastResult: null,
 };
 const audio = new LetterAudio(G.LETTERS, 'audio/');
 
@@ -216,6 +219,8 @@ function show(screen) {
   const playing = screen === 'play';
   $('#hud').hidden = !playing;
   $('#actions').hidden = !playing;
+  if (!playing) { $('#coach').hidden = true; app.dataset.tutorial = 'off'; }
+  if (screen !== 'results') $('#confetti').hidden = true;
   $('#btn-back').hidden = !(screen === 'stats' || screen === 'settings');
   $('#topbar-actions').hidden = playing;
   $('#brand-text').textContent = screen === 'stats' ? 'Progress' : screen === 'settings' ? 'Settings' : screen === 'results' ? 'Results' : 'NBack';
@@ -304,28 +309,17 @@ function lightCell(trial) {
   cell.classList.add('lit');
 }
 
-function renderProgress(index, errorsAt) {
-  const bar = $('#progress');
+function renderProgress(index) {
   const total = state.sequence.trials.length;
-  const n = state.sequence.n;
-  if (bar.childElementCount !== total) {
-    bar.innerHTML = '';
-    for (let i = 0; i < total; i++) bar.appendChild(document.createElement('i'));
-  }
-  const segs = bar.children;
-  for (let i = 0; i < total; i++) {
-    const seg = segs[i];
-    seg.className = '';
-    if (i < index) seg.classList.add(errorsAt.has(i) ? 'err' : i < n ? 'warm' : 'done');
-    else if (i === index) seg.classList.add('now');
-  }
+  const pct = Math.max(0, Math.min(100, ((index + 1) / total) * 100));
+  $('#progress-fill').style.width = `${pct}%`;
 }
 
 function hudText(index) {
   const n = state.sequence.n;
   const total = state.sequence.trials.length;
   const el = $('#hud-count');
-  el.textContent = index < n ? `Memorize ${index + 1}/${n}` : `${index + 1}/${total}`;
+  el.textContent = index < n ? `Memorize ${index + 1} of ${n}` : '';
 }
 
 function flash(stream, cls, ms = 380) {
@@ -348,17 +342,19 @@ async function countdown(from = 3) {
     cd.style.animation = 'none';
     void cd.offsetWidth;
     cd.style.animation = '';
-    if (state.settings.tones) audio.tone('tick');
+    if (state.settings.tones) audio.sfx('tick');
     await new Promise(r => setTimeout(r, step));
     if (state.screen !== 'play') break;
   }
   cd.hidden = true;
   badge.hidden = false;
+  if (state.settings.tones && state.screen === 'play') audio.sfx('go');
 }
 
 async function startSession() {
   const s = state.settings;
   await audio.unlock();
+  if (!audio.sfxReady) audio.preloadSfx();
   if (s.sound && s.voice === 'recorded' && !audio.ready && !audio.failed) {
     toast('Loading voice…', 1200);
     const ok = await Promise.race([audio.preload(), new Promise(r => setTimeout(() => r(false), 4000))]);
@@ -373,7 +369,7 @@ async function startSession() {
   }
   $('#board-overlay').hidden = true;
   show('play');
-  renderProgress(-1, state.errorsAt);
+  renderProgress(-1);
   $('#hud-count').textContent = 'Get ready';
   await countdown(3);
   if (state.screen !== 'play') return;
@@ -385,7 +381,7 @@ async function startSession() {
         if (s.voice === 'device') audio.speak(trial.values.sound);
         else audio.play(trial.values.sound);
       }
-      renderProgress(i, state.errorsAt);
+      renderProgress(i);
       hudText(i);
     },
     onStimulusEnd: () => clearCells(),
@@ -395,6 +391,7 @@ async function startSession() {
         if (s.feedback) {
           for (const m of missed) flash(m, 'missed', 600);
           buzz(40);
+          if (s.tones) audio.sfx('missed');
         }
       }
     },
@@ -404,6 +401,11 @@ async function startSession() {
 }
 
 function respond(stream) {
+  if (state.tutorial) {
+    const btn = $(`.action[data-stream="${stream}"]`);
+    if (btn && !btn.hidden) { btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120); buzz(12); state.tutorial.press(stream); }
+    return;
+  }
   const runner = state.runner;
   if (!runner || state.screen !== 'play') return;
   const res = runner.respond(stream);
@@ -421,9 +423,8 @@ function respond(stream) {
   if (state.settings.feedback) {
     flash(stream, res.correct ? 'good' : 'bad');
     if (!res.correct) state.errorsAt.add(runner.index);
-    renderProgress(runner.index, state.errorsAt);
   }
-  if (state.settings.tones) audio.tone(res.correct ? 'good' : 'bad');
+  if (state.settings.tones) audio.sfx(res.correct ? 'good' : 'bad');
   buzz(res.correct ? 12 : [30, 40, 30]);
 }
 
@@ -499,7 +500,7 @@ function finishSession(responses) {
     S.saveAchievements(state.achievements);
     let delay = 600;
     for (const a of fresh) {
-      setTimeout(() => toast(`${a.icon} Achievement: ${a.title}`), delay);
+      setTimeout(() => { toast(`${a.icon} Achievement: ${a.title}`); if (s.tones) audio.sfx('achievement'); }, delay);
       delay += 2800;
     }
   }
@@ -507,40 +508,181 @@ function finishSession(responses) {
   show('results');
   $('#n-num').textContent = s.n;
   buzz(next > entry.n ? [20, 30, 20, 30, 60] : 20);
-  if (s.tones) audio.tone(next > entry.n ? 'good' : 'tick');
+  if (s.tones) audio.sfx(next > entry.n ? 'levelup' : 'complete');
   applySettings();
+}
+
+/* ------------------------------------------------------------------ */
+/* tutorial                                                            */
+/* ------------------------------------------------------------------ */
+async function startTutorial() {
+  if (state.runner) { state.runner.stop(); state.runner = null; }
+  await audio.unlock();
+  if (!audio.sfxReady) audio.preloadSfx();
+  if (!audio.ready && !audio.failed) await Promise.race([audio.preload(), new Promise(r => setTimeout(r, 2500))]);
+  for (const dlg of $$('dialog[open]')) dlg.close();
+  show('play');
+  app.dataset.tutorial = 'on';
+  $('#coach').hidden = false;
+  $('#board-overlay').hidden = true;
+  for (const btn of $$('.action')) { btn.hidden = btn.dataset.stream === 'color'; btn.classList.remove('good', 'bad', 'missed', 'hint'); }
+  const ui = {
+    light: (pos, letter) => {
+      clearCells();
+      cells[pos].classList.add('lit');
+      if (state.settings.sound) { if (state.settings.voice === 'device') audio.speak(letter); else audio.play(letter); }
+    },
+    clear: () => clearCells(),
+    hint: (streams) => { for (const btn of $$('.action')) btn.classList.toggle('hint', streams.includes(btn.dataset.stream)); },
+    coach: ({ step, steps, title, text, button, onButton }) => {
+      $('#coach-steps').innerHTML = Array.from({ length: steps }, (_, i) => `<i class="${i <= step ? 'done' : ''}"></i>`).join('');
+      $('#coach-title').textContent = title;
+      $('#coach-text').textContent = text;
+      const next = $('#coach-next');
+      next.hidden = !button;
+      next.textContent = button || 'Next';
+      next.onclick = onButton || null;
+    },
+    feedback: (stream, ok) => { if (state.settings.feedback) flash(stream, ok ? 'good' : 'bad'); buzz(ok ? 12 : [30, 40, 30]); },
+    sfx: (kind) => { if (state.settings.tones) audio.sfx(kind); },
+    badge: (n) => { $('#n-num').textContent = n; },
+    done: (reason) => endTutorial(reason),
+  };
+  state.tutorial = createTutorial(ui);
+  state.tutorial.start();
+}
+
+function endTutorial(reason) {
+  state.tutorial = null;
+  app.dataset.tutorial = 'off';
+  $('#coach').hidden = true;
+  for (const btn of $$('.action')) btn.classList.remove('hint', 'good', 'bad', 'missed');
+  clearCells();
+  S.setOnboarded();
+  $('#n-num').textContent = state.settings.n;
+  show('home');
+  toast(reason === 'completed' ? 'Tutorial complete. Ready for a real session!' : 'Tutorial skipped. Find it again under Settings → Learn.', 3200);
 }
 
 /* ------------------------------------------------------------------ */
 /* results                                                             */
 /* ------------------------------------------------------------------ */
+const STREAM_SHORT = { position: 'Position', sound: 'Sound', color: 'Color' };
+
+function headlineFor(entry, score) {
+  const delta = entry.nextN - entry.n;
+  if (delta > 0) return ['Awesome!', `You move up to ${entry.nextN}-back`];
+  if (score.accuracy >= 0.85) return ['Excellent!', `Strong round at ${entry.n}-back`];
+  if (delta < 0) return ['Keep going!', `Back to ${entry.nextN}-back to build a base`];
+  if (score.accuracy >= 0.6) return ['Nice work!', `${score.errors} error${score.errors === 1 ? '' : 's'}: fewer than 3 raises N`];
+  return ['Good effort!', 'Every round builds the skill'];
+}
+
+function pointsFor(entry, score) {
+  // accuracy weighted by level, so a clean 3-back is worth more than a clean 1-back
+  return Math.round(score.accuracy * 100 * entry.n);
+}
+
 function renderResults(entry, score) {
   const delta = entry.nextN - entry.n;
-  $('#res-emoji').textContent = delta > 0 ? '🎉' : delta < 0 ? '💪' : '👍';
-  $('#res-headline').textContent = delta > 0 ? 'Level up!' : delta < 0 ? 'Stepping back' : 'Solid round';
-  $('#res-sub').textContent = state.settings.adaptive
-    ? (delta ? `N goes from ${entry.n} to ${entry.nextN}` : `N stays at ${entry.n}. ${score.errors} error${score.errors === 1 ? '' : 's'}: fewer than 3 raises it.`)
-    : `${entry.n}-back · ${score.errors} error${score.errors === 1 ? '' : 's'}`;
+  const [headline, sub] = headlineFor(entry, score);
+  const pct = Math.round(score.accuracy * 100);
+  const colorOf = st => `var(--series-${st})`;
 
-  const colorOf = s => `var(--series-${s})`;
-  $('#res-streams').innerHTML = score.streams.map((s) => {
-    const m = score.perStream[s];
-    const pct = Math.round(m.accuracy * 100);
-    return `<div class="stream-row">
-      <div class="name"><span class="dot" style="background:${colorOf(s)}"></span>${ST.STREAM_LABELS[s]}</div>
-      <div class="bar"><i style="--c:${colorOf(s)};width:${pct}%"></i></div>
-      <div class="pct">${pct}%</div>
-      <small>${m.hits} hit${m.hits === 1 ? '' : 's'} · ${m.misses} missed · ${m.falseAlarms} wrong press${m.falseAlarms === 1 ? '' : 'es'}${m.meanRt != null ? ` · ${m.meanRt} ms` : ''}</small>
+  $('#stage-alt').innerHTML = `<div class="res-hero">
+      ${ring({ value: score.accuracy, max: 1, size: 150, stroke: 13, color: delta > 0 ? 'var(--good)' : 'var(--accent)', label: `${pct}%`, sublabel: 'correct' })}
+      <div>
+        <div class="headline">${headline}</div>
+        <div class="sub">${sub}</div>
+        <div class="points">${pointsFor(entry, score)} <span>points</span></div>
+      </div>
     </div>`;
-  }).join('');
-  $('#res-meta').innerHTML = `
-    <div><b>${Math.round(score.accuracy * 100)}%</b><span>accuracy</span></div>
-    <div><b>${score.meanRt != null ? `${score.meanRt} ms` : '—'}</b><span>reaction</span></div>
-    <div><b>${Math.round(entry.durationMs / 1000)} s</b><span>duration</span></div>`;
 
-  $('#stage-alt').innerHTML = `<div class="rings">${score.streams.map(s => `
-    <div class="ring-wrap">${ring({ value: score.perStream[s].accuracy, max: 1, size: 128, stroke: 12, color: colorOf(s), label: `${Math.round(score.perStream[s].accuracy * 100)}%` })}
-    <span><span class="dot" style="background:${colorOf(s)}"></span> ${ST.STREAM_LABELS[s]}</span></div>`).join('')}</div>`;
+  $('#res-tiles').innerHTML = `
+    <div class="tile"><b>${entry.n}</b><span>N level</span></div>
+    <div class="tile"><b>${Math.round(entry.durationMs / 1000)} s</b><span>play time</span></div>
+    <div class="tile"><b>${(entry.interval / 1000).toFixed(1)} s</b><span>interval</span></div>`;
+
+  const streams = score.streams;
+  const row = (label, key, badWhenPositive) => `<tr><td>${label}</td>${streams.map((st) => {
+    const v = score.perStream[st][key];
+    const cls = v === 0 ? 'zero' : badWhenPositive ? 'bad' : '';
+    return `<td class="v ${cls}">${v}</td>`;
+  }).join('')}</tr>`;
+  $('#res-streams').innerHTML = `<table class="stream-table">
+    <thead><tr><th>Stream</th>${streams.map(st => `<th class="s"><span class="pct" style="color:${colorOf(st)}">${Math.round(score.perStream[st].accuracy * 100)}%</span>${STREAM_SHORT[st]}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${row('Correct', 'hits', false)}
+      ${row('Missed match', 'misses', true)}
+      ${row('False tap', 'falseAlarms', true)}
+      <tr><td>Reaction</td>${streams.map(st => `<td class="v ${score.perStream[st].meanRt == null ? 'zero' : ''}">${score.perStream[st].meanRt != null ? `${score.perStream[st].meanRt} ms` : '—'}</td>`).join('')}</tr>
+    </tbody></table>`;
+
+  $('#btn-again').innerHTML = delta > 0 ? `<span>Play again at ${entry.nextN}-back</span>` : delta < 0 ? `<span>Play again at ${entry.nextN}-back</span>` : '<span>Play again</span>';
+  state.lastResult = { entry, score, headline };
+  if (delta > 0 && !reduceMotion.matches) confetti();
+}
+
+function shareResults() {
+  const r = state.lastResult;
+  if (!r) return;
+  const { entry, score } = r;
+  const lines = [
+    `NBack Trainer: ${MODE_LABEL[entry.mode]} ${entry.n}-back, ${Math.round(score.accuracy * 100)}% correct, ${pointsFor(entry, score)} points.`,
+    ...score.streams.map(st => `${STREAM_SHORT[st]} ${Math.round(score.perStream[st].accuracy * 100)}% (${score.perStream[st].hits} correct, ${score.perStream[st].misses} missed, ${score.perStream[st].falseAlarms} false)`),
+  ];
+  if (entry.nextN > entry.n) lines.push(`Level up to ${entry.nextN}-back!`);
+  const text = lines.join('\n');
+  if (navigator.share) {
+    navigator.share({ title: 'NBack Trainer results', text }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => toast('Results copied to the clipboard')).catch(() => toast('Could not share on this device'));
+  } else {
+    toast('Sharing is not available here');
+  }
+}
+
+/** Lightweight confetti burst on the stage canvas. */
+function confetti() {
+  const canvas = $('#confetti');
+  const stage = $('#stage');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.hidden = false;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const cs = getComputedStyle(root);
+  const colors = ['--accent', '--accent-2', '--accent-3', '--series-position', '--series-sound', '--series-color'].map(v => cs.getPropertyValue(v).trim());
+  const parts = Array.from({ length: 90 }, () => ({
+    x: Math.random() * w, y: -10 - Math.random() * h * 0.5,
+    vx: (Math.random() - 0.5) * 1.6, vy: 1.5 + Math.random() * 2.5,
+    r: 4 + Math.random() * 5, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
+    color: colors[Math.floor(Math.random() * colors.length)], shape: Math.random() < 0.3 ? 'circle' : 'rect',
+  }));
+  const start = performance.now();
+  const duration = 2600;
+  function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, w, h);
+    const fade = t > duration - 600 ? Math.max(0, (duration - t) / 600) : 1;
+    for (const p of parts) {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += 0.02;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      if (p.shape === 'circle') { ctx.beginPath(); ctx.arc(0, 0, p.r / 2, 0, Math.PI * 2); ctx.fill(); }
+      else ctx.fillRect(-p.r / 2, -p.r / 3, p.r, p.r / 1.5);
+      ctx.restore();
+    }
+    if (t < duration && state.screen === 'results') requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, w, h); canvas.hidden = true; }
+  }
+  requestAnimationFrame(frame);
 }
 
 /* ------------------------------------------------------------------ */
@@ -691,6 +833,7 @@ function bind() {
   $('#btn-start').addEventListener('click', startSession);
   $('#btn-again').addEventListener('click', startSession);
   $('#btn-home').addEventListener('click', () => show('home'));
+  $('#btn-share').addEventListener('click', shareResults);
   $('#btn-back').addEventListener('click', () => show('home'));
   $('#nav-stats').addEventListener('click', () => show(state.screen === 'stats' ? 'home' : 'stats'));
   $('#nav-settings').addEventListener('click', () => show(state.screen === 'settings' ? 'home' : 'settings'));
@@ -776,12 +919,30 @@ function bind() {
     toast('All data deleted');
   });
   $('#btn-history-more').addEventListener('click', () => { state.historyShown += 25; renderHistoryList(); });
-  $('#dlg-howto').addEventListener('close', () => S.setOnboarded());
+  $('#dlg-howto').addEventListener('close', () => {
+    if ($('#dlg-howto').returnValue === 'tutorial') startTutorial();
+    else S.setOnboarded();
+  });
+  $('#dlg-welcome').addEventListener('close', () => {
+    if ($('#dlg-welcome').returnValue === 'tutorial') startTutorial();
+    else { S.setOnboarded(); toast('You can run the tutorial any time from Settings → Learn.', 3200); }
+  });
+  $('#btn-tutorial-settings').addEventListener('click', startTutorial);
+  $('#btn-howto-settings').addEventListener('click', () => $('#dlg-howto').showModal());
+  $('#coach-skip').addEventListener('click', () => { if (state.tutorial) state.tutorial.skip(); });
 
   document.addEventListener('keydown', (ev) => {
     if (ev.repeat) return;
     const tag = (ev.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+    if (state.tutorial) {
+      const k = ev.key.toLowerCase();
+      if (k === 'a' || ev.key === 'ArrowLeft') respond('position');
+      else if (k === 'l' || ev.key === 'ArrowRight') respond('sound');
+      else if (ev.key === 'Escape') state.tutorial.skip();
+      else if (ev.key === 'Enter' && !$('#coach-next').hidden) $('#coach-next').click();
+      return;
+    }
     if (state.screen === 'play') {
       const k = ev.key.toLowerCase();
       if (k === 'a' || ev.key === 'ArrowLeft') { respond('position'); ev.preventDefault(); }
@@ -795,12 +956,12 @@ function bind() {
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state.screen === 'play') pauseSession('The app went to the background.');
+    if (document.hidden && state.screen === 'play' && !state.tutorial) pauseSession('The app went to the background.');
   });
 
   watchPosture((info, prev) => {
     state.posture = info;
-    if (prev && state.screen === 'play') pauseSession('The screen layout changed. Settle the phone, then resume.');
+    if (prev && state.screen === 'play' && !state.tutorial) pauseSession('The screen layout changed. Settle the phone, then resume.');
     if (state.screen === 'stats') renderStats();
     if (state.screen === 'settings') renderSettings();
   }, { enabled: () => state.settings.hingeAware });
@@ -828,9 +989,9 @@ function init() {
   applySettings();
   show('home');
   registerServiceWorker();
-  if (!S.isOnboarded()) setTimeout(() => $('#dlg-howto').showModal(), 400);
+  if (!S.isOnboarded()) setTimeout(() => $('#dlg-welcome').showModal(), 400);
   // warm the voice in the background (decoding needs a gesture on some browsers; failures are fine)
-  document.addEventListener('pointerdown', () => { audio.unlock(); if (!audio.ready && !audio.failed) audio.preload(); }, { once: true, passive: true });
+  document.addEventListener('pointerdown', () => { audio.unlock(); if (!audio.ready && !audio.failed) audio.preload(); if (!audio.sfxReady) audio.preloadSfx(); }, { once: true, passive: true });
 }
 
 init();

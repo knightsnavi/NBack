@@ -41,6 +41,16 @@
 
   <main class="game" id="game">
     <section class="stage" id="stage" aria-live="off">
+      <div class="hud" id="hud" hidden>
+        <div class="progress" id="progress" aria-hidden="true"><i class="fill" id="progress-fill"></i></div>
+        <div class="hud-count" id="hud-count" aria-live="polite"></div>
+        <button class="icon-btn small" id="btn-pause" aria-label="Pause">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn small" id="btn-quit" aria-label="End session">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
       <div class="board" id="board" role="img" aria-label="3 by 3 grid">
         <div class="cell" data-index="0"></div>
         <div class="cell" data-index="1"></div>
@@ -61,22 +71,12 @@
         </div>
       </div>
       <div class="stage-alt" id="stage-alt" hidden></div>
+      <canvas class="confetti" id="confetti" hidden aria-hidden="true"></canvas>
     </section>
 
     <div class="hinge-gap" aria-hidden="true"></div>
 
     <section class="side" id="side">
-      <div class="hud" id="hud" hidden>
-        <div class="progress" id="progress" aria-hidden="true"></div>
-        <div class="hud-count" id="hud-count" aria-live="polite">1/22</div>
-        <button class="icon-btn small" id="btn-pause" aria-label="Pause">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-        </button>
-        <button class="icon-btn small" id="btn-quit" aria-label="End session">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
-        </button>
-      </div>
-
       <div class="actions" id="actions" hidden>
         <button class="action action-position" id="btn-position" data-stream="position" aria-keyshortcuts="A">
           <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/><rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" opacity=".35"/></svg></span>
@@ -93,6 +93,16 @@
           <span class="lbl">Sound</span>
           <span class="key">L</span>
         </button>
+      </div>
+
+      <div class="coach" id="coach" hidden>
+        <div class="coach-steps" id="coach-steps" aria-hidden="true"></div>
+        <div class="coach-title" id="coach-title">Welcome</div>
+        <div class="coach-text" id="coach-text"></div>
+        <div class="coach-actions">
+          <button class="btn-primary" id="coach-next">Next</button>
+          <button class="link" id="coach-skip">Skip tutorial</button>
+        </div>
       </div>
 
       <div class="panel" id="panel">
@@ -131,17 +141,16 @@
 
         <!-- RESULTS -->
         <section class="view view-results" id="view-results" hidden>
-          <div class="card result-head">
-            <div class="result-emoji" id="res-emoji">🎉</div>
-            <div>
-              <h2 id="res-headline">Level up!</h2>
-              <p id="res-sub">N goes from 2 to 3</p>
-            </div>
-          </div>
+          <div class="tiles three" id="res-tiles"></div>
           <div class="card" id="res-streams"></div>
-          <div class="card result-meta" id="res-meta"></div>
           <div class="btn-row">
             <button class="btn-primary" id="btn-again">Play again</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btn-share">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14 5l6 6-6 6M20 11H9a5 5 0 0 0-5 5v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Share results
+            </button>
             <button class="btn-secondary" id="btn-home">Home</button>
           </div>
         </section>
@@ -327,6 +336,15 @@
             </label>
           </div>
 
+          <div class="card">
+            <h3>Learn</h3>
+            <p class="hint">A guided walkthrough on the real board, about two minutes. You can also read the rules.</p>
+            <div class="btn-row wrap">
+              <button class="btn-primary" id="btn-tutorial-settings">Run the tutorial</button>
+              <button class="btn-secondary" id="btn-howto-settings">How to play</button>
+            </div>
+          </div>
+
           <div class="card about">
             <h3>About</h3>
             <p>NBack Trainer follows the dual N-back task from Jaeggi et al. (2008): a 3×3 grid, eight spoken letters, 20 + N trials per block, and an adaptive level. Triple mode adds a colour stream.</p>
@@ -357,7 +375,21 @@
     </li>
   </ol>
   <p class="hint">On a foldable, half-open the phone and set it down: the grid sits on the top screen and the buttons on the bottom.</p>
-  <form method="dialog"><button class="btn-primary" id="btn-howto-ok" value="ok">Got it</button></form>
+  <form method="dialog" class="btn-row">
+    <button class="btn-secondary" id="btn-howto-ok" value="ok">Got it</button>
+    <button class="btn-primary" id="btn-howto-tutorial" value="tutorial">Start tutorial</button>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="dlg-welcome">
+  <div class="welcome-art" aria-hidden="true"><div class="mini-grid big"><i></i><i class="on"></i><i></i><i></i><i class="c">N</i><i></i><i></i><i></i><i></i></div></div>
+  <h2>Welcome to NBack</h2>
+  <p>A two-minute working-memory workout. Want a quick guided walkthrough on the real board before your first session?</p>
+  <p class="hint">You can run it again any time from Settings.</p>
+  <form method="dialog" class="btn-row">
+    <button class="btn-secondary" value="skip">Skip for now</button>
+    <button class="btn-primary" value="tutorial" autofocus>Start tutorial</button>
+  </form>
 </dialog>
 
 <dialog class="dialog" id="dlg-confirm">

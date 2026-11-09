@@ -1,11 +1,16 @@
 // Letter playback. Pre-decoded audio buffers through Web Audio for near-zero
 // latency, with speech synthesis as a fallback if a file fails to load.
 
+export const SFX = ['good', 'bad', 'missed', 'tick', 'go', 'levelup', 'complete', 'achievement'];
+
 export class LetterAudio {
   constructor(letters, basePath = 'audio/') {
     this.letters = letters;
     this.basePath = basePath;
     this.buffers = new Map();
+    this.sfxBuffers = new Map();
+    this.sfxReady = false;
+    this.sfxGain = null;
     this.ctx = null;
     this.gain = null;
     this.volume = 0.9;
@@ -25,6 +30,9 @@ export class LetterAudio {
     this.gain = this.ctx.createGain();
     this.gain.gain.value = this.volume;
     this.gain.connect(this.ctx.destination);
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = this.volume * 0.8;
+    this.sfxGain.connect(this.ctx.destination);
     return this.ctx;
   }
 
@@ -57,6 +65,22 @@ export class LetterAudio {
   setVolume(v) {
     this.volume = Math.min(1, Math.max(0, v));
     if (this.gain) this.gain.gain.value = this.muted ? 0 : this.volume;
+    if (this.sfxGain) this.sfxGain.gain.value = this.volume * 0.8;
+  }
+
+  /** Load the UI sound effects (generated once with ElevenLabs). */
+  async preloadSfx() {
+    const ctx = this.ensureContext();
+    if (!ctx) return false;
+    const results = await Promise.allSettled(SFX.map(async (name) => {
+      const res = await fetch(`${this.basePath}sfx/${name}.mp3`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.arrayBuffer();
+      const buffer = await new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject));
+      this.sfxBuffers.set(name, buffer);
+    }));
+    this.sfxReady = results.some(r => r.status === 'fulfilled');
+    return this.sfxReady;
   }
 
   setMuted(m) {
@@ -90,17 +114,31 @@ export class LetterAudio {
     } catch { /* ignore */ }
   }
 
-  /** Short UI tones so taps feel responsive even with the voice muted. */
+  /** UI sound: the recorded effect when loaded, otherwise a short synthesized tone. */
+  sfx(kind) {
+    const buffer = this.sfxBuffers.get(kind);
+    if (buffer && this.ctx) {
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(this.sfxGain);
+      src.start();
+      return;
+    }
+    this.tone(kind);
+  }
+
+  /** Short synthesized tones, used until the effects are loaded. */
   tone(kind) {
     const ctx = this.ensureContext();
-    if (!ctx || this.muted) return;
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     const now = ctx.currentTime;
-    const freq = kind === 'good' ? 880 : kind === 'bad' ? 220 : 520;
+    const freq = { good: 880, levelup: 880, achievement: 1046, bad: 220, missed: 300, tick: 520, go: 660, complete: 523 }[kind] || 520;
     osc.type = kind === 'bad' ? 'sawtooth' : 'sine';
     osc.frequency.setValueAtTime(freq, now);
-    if (kind === 'good') osc.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
+    if (kind === 'good' || kind === 'levelup' || kind === 'go') osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.08);
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(0.18 * this.volume, now + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);

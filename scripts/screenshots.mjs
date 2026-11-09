@@ -46,7 +46,7 @@ function fakeHistory() {
 
 const errors = [];
 const browser = await chromium.launch({ args: ['--enable-experimental-web-platform-features'] });
-const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : (process.env.TUTORIAL ? [] : null);
 
 async function openPage(vpName, { seed = true, query = '' } = {}) {
   const vp = VIEWPORTS[vpName];
@@ -165,15 +165,70 @@ if (!ONLY) {
 // First run (no data): onboarding dialog
 if (!ONLY) {
   const { page, context } = await openPage('cover', { seed: false });
-  await page.waitForSelector('#dlg-howto[open]', { timeout: 3000 });
+  await page.waitForSelector('#dlg-welcome[open]', { timeout: 3000 });
   await shot(page, 'cover-firstrun');
   await context.close();
 }
 
 await browser.close();
-if (errors.length) {
+if (errors.length && !process.env.TUTORIAL) {
   console.log('\nCONSOLE ERRORS:');
   for (const e of errors) console.log(' ', e);
   process.exit(1);
 }
 console.log('\nno console errors');
+
+// Tutorial walk: first run → welcome → guided steps, pressing the hinted buttons.
+export async function tutorialWalk(vpName) {
+  const b = await chromium.launch({ args: ['--enable-experimental-web-platform-features'] });
+  const errs = [];
+  const vp = VIEWPORTS[vpName];
+  const context = await b.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: SCALE, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  page.on('pageerror', e => errs.push(e.message));
+  const q = vp.feature ? `?posture=${vp.feature.orientation === 'horizontal' ? 'tabletop' : 'book'}&hinge=${vp.feature.maskLength}` : '';
+  await page.goto(BASE + q);
+  await page.waitForSelector('#dlg-welcome[open]', { timeout: 4000 });
+  await shot(page, `${vpName}-welcome`);
+  await page.click('#dlg-welcome button[value="tutorial"]');
+  await page.waitForSelector('#coach:not([hidden])');
+  await page.waitForTimeout(400);
+  await shot(page, `${vpName}-tutorial-0`);
+  const pressHinted = async () => {
+    for (let k = 0; k < 3; k++) {
+      const hinted = await page.$$eval('.action.hint', els => els.map(e => e.dataset.stream));
+      if (!hinted.length) return;
+      await page.dispatchEvent(`.action[data-stream="${hinted[0]}"]`, 'pointerdown', { button: 0, pointerType: 'touch' });
+      await page.waitForTimeout(250);
+    }
+  };
+  let guard = 0;
+  while (guard++ < 60) {
+    const title = await page.textContent('#coach-title');
+    const nextVisible = await page.isVisible('#coach-next');
+    if (title.startsWith('Practice done')) break;
+    if (title.startsWith('Practice')) { await pressHinted(); await page.waitForTimeout(600); continue; }
+    if (nextVisible) {
+      if (guard === 3) await shot(page, `${vpName}-tutorial-step`);
+      await page.click('#coach-next');
+      await page.waitForTimeout(700);
+    } else {
+      await page.waitForTimeout(500);
+      if (guard === 4) await shot(page, `${vpName}-tutorial-hint`);
+      await pressHinted();
+      await page.waitForTimeout(400);
+    }
+  }
+  await shot(page, `${vpName}-tutorial-done`);
+  await page.click('#coach-next');
+  await page.waitForTimeout(400);
+  const screen = await page.getAttribute('#app', 'data-screen');
+  const onboarded = await page.evaluate(() => localStorage.getItem('nback.onboarded.v1'));
+  console.log(`  tutorial finished → screen ${screen}, onboarded=${onboarded}, loops=${guard}`);
+  await b.close();
+  if (errs.length) { console.log('CONSOLE ERRORS', errs); process.exit(1); }
+}
+if (process.env.TUTORIAL) {
+  for (const v of process.env.TUTORIAL.split(',')) { console.log('tutorial on', v); await tutorialWalk(v); }
+}

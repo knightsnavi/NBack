@@ -5,9 +5,13 @@ foldable phones. It works on the cover screen, on the inner screen flat or in la
 half-open in tabletop or book posture, where the grid and the controls sit on opposite screens
 and nothing straddles the hinge.
 
-| Cover screen | Tabletop (half-open) | Book (half-open) | Progress |
-|---|---|---|---|
-| ![cover](docs/cover-play.png) | ![tabletop](docs/tabletop-play.png) | ![book](docs/book-play.png) | ![stats](docs/cover-stats.png) |
+| Cover screen | Tabletop (half-open) | Book (half-open) |
+|---|---|---|
+| ![cover](docs/cover-play.png) | ![tabletop](docs/tabletop-play.png) | ![book](docs/book-play.png) |
+
+| Results | Guided tutorial | Progress |
+|---|---|---|
+| ![results](docs/cover-results.png) | ![tutorial](docs/cover-tutorial-0.png) | ![stats](docs/cover-stats.png) |
 
 ## The game
 
@@ -30,8 +34,14 @@ square, with optional colour names for players who find colours hard to tell apa
 - **Thumb-first controls**: large stream-coloured buttons in the thumb zone, handedness switch,
   keyboard shortcuts (`A` position, `F` colour, `L` sound, `Space` pause, `Esc` end), haptics,
   tap tones, immediate right/wrong feedback, miss indicators, and a per-trial progress strip.
-- **Recorded voice**: the eight letters were recorded once and ship as small MP3 files, decoded
-  through Web Audio for low-latency playback, with device speech as a fallback.
+- **Guided tutorial**: on first launch the app offers a two-minute interactive walkthrough on
+  the real board (position match, sound match, both, no match, what N means, then a hinted
+  practice round). It can be rerun any time from Settings → Learn, and a written "How to play"
+  reference is one tap away.
+- **Recorded voice and sound design**: the eight letters and every UI sound (correct, wrong,
+  miss, countdown tick, go, level up, session complete, achievement) were generated once with
+  ElevenLabs and ship as small MP3 files, decoded through Web Audio for low-latency playback.
+  Device speech and synthesized tones are the fallbacks if a file cannot load.
 - **Record keeping**: every session is stored locally with per-stream hits, misses, false alarms,
   accuracy, mean reaction time, duration, and the resulting N.
 - **Trends**: level over time, accuracy per stream, sessions per day against a daily goal,
@@ -61,6 +71,7 @@ To test fold postures on a desktop browser, add `?posture=tabletop` or `?posture
 npm test                 # engine unit tests (node:test)
 node scripts/render-icons.mjs   # regenerate PNG icons from assets/icon.svg
 node scripts/screenshots.mjs    # walk every screen on Z Fold viewports (needs the server on :8080)
+TUTORIAL=cover,tabletop node scripts/screenshots.mjs   # drive the guided tutorial end to end
 ```
 
 The engine in `js/game.js` is pure and fully covered by `tests/game.test.mjs`. Layout decisions
