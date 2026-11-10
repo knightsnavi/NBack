@@ -1,0 +1,73 @@
+name: iOS simulator check (temporary)
+
+# One-off diagnostic: starts the app in simulators with a seeded profile, plays an assisted
+# session by script, and prints small copies of the screenshots into the log.
+on:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Seed a profile and an auto-start into this checkout only
+        run: |
+          node -e '
+            const fs = require("fs");
+            const p = "www/index.html";
+            const seed = `<script>
+              localStorage.setItem("nback.onboarded.v1", "true");
+              localStorage.setItem("nback.meta.v1", JSON.stringify({ watchedVideo: true }));
+              localStorage.setItem("nback.settings.v1", JSON.stringify({ mode: "dual", assist: true, levels: { dual: 2 } }));
+              window.addEventListener("error", (e) => console.error("PAGE-ERROR " + e.message));
+              window.addEventListener("unhandledrejection", (e) => console.error("PAGE-REJECTION " + (e.reason && e.reason.message || e.reason)));
+              setTimeout(() => { console.log("CI-DEMO insets " + getComputedStyle(document.documentElement).getPropertyValue("--sa-top") + " " + JSON.stringify(document.documentElement.dataset) + " " + innerWidth + "x" + innerHeight); }, 5000);
+              setTimeout(() => document.querySelector("#btn-start").click(), 45000);
+            </script>`;
+            const html = fs.readFileSync(p, "utf8");
+            if (!html.includes("</head>")) throw new Error("no head");
+            fs.writeFileSync(p, html.replace("</head>", seed + "</head>"));
+          '
+
+      - name: Sync and build
+        run: |
+          npm ci
+          npx cap sync ios
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ios-build" CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
+
+      - name: Run on an iPhone and an iPad
+        run: |
+          APP=$(find "$RUNNER_TEMP/ios-build/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)
+          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -40
+          pick() { xcrun simctl list devices available -j | jq -r --arg k "$1" '[.devices | to_entries | sort_by(.key)[] | select(.key | contains("iOS")) | .value[] | select(.name | startswith($k))] | last | .udid'; }
+          dump() { sips -Z 760 -s format jpeg -s formatOptions 55 "$1" --out "$1.jpg" >/dev/null; echo "IMG-BEGIN $2"; base64 -i "$1.jpg" | fold -w 160; echo "IMG-END $2"; }
+          for kind in "iPhone 16" "iPad"; do
+            udid=$(pick "$kind")
+            name="${kind// /}"
+            echo "$kind simulator: $udid"
+            xcrun simctl boot "$udid"
+            xcrun simctl bootstatus "$udid" -b >/dev/null
+            xcrun simctl install "$udid" "$APP"
+            xcrun simctl launch "$udid" com.knightsnavi.nback
+            sleep 28
+            xcrun simctl io "$udid" screenshot "$name-home.png"
+            sleep 50
+            xcrun simctl io "$udid" screenshot "$name-play.png"
+            sleep 75
+            xcrun simctl io "$udid" screenshot "$name-results.png"
+            echo "APP-LOG-BEGIN $name"
+            xcrun simctl spawn "$udid" log show --last 4m --style compact --predicate 'process == "App"' 2>/dev/null | grep -E "⚡️|PAGE-|CI-DEMO|rror" | cut -c1-300 | tail -40 || true
+            echo "APP-LOG-END $name"
+            xcrun simctl shutdown "$udid"
+            dump "$name-home.png" "$name-home"
+            dump "$name-play.png" "$name-play"
+            dump "$name-results.png" "$name-results"
+          done
