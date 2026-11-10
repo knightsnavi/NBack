@@ -73,7 +73,7 @@ Without them, dev builds use a throwaway debug key and tagged releases fail on p
 
 ## Build locally
 
-Needs Node 22, Android Studio, and the JDK named in `.github/workflows/android.yml`.
+Needs Node 22, Android Studio, and JDK 21 (Capacitor 8 requires it; Android Studio's bundled JDK works).
 
 ```
 npm install

@@ -19,6 +19,7 @@ const Haptics = plugin('Haptics');
 const LocalNotifications = plugin('LocalNotifications');
 const App = plugin('App');
 const StatusBar = plugin('StatusBar');
+const SystemBars = plugin('SystemBars');
 const Filesystem = plugin('Filesystem');
 const Share = plugin('Share');
 
@@ -234,10 +235,15 @@ export function onResume(handler) {
   App.addListener('resume', handler);
 }
 
+/**
+ * Match the system bar icons to the app theme. The app draws edge to edge, so
+ * the bars are transparent and show the page background behind them.
+ */
 export async function setStatusBar(dark) {
+  const style = { style: dark ? 'DARK' : 'LIGHT' };
+  if (SystemBars) {
+    try { await SystemBars.setStyle(style); return; } catch { /* fall through to the status bar plugin */ }
+  }
   if (!StatusBar) return;
-  try {
-    await StatusBar.setStyle({ style: dark ? 'DARK' : 'LIGHT' });
-    await StatusBar.setBackgroundColor({ color: dark ? '#1b1630' : '#fff4e6' });
-  } catch { /* ignore */ }
+  try { await StatusBar.setStyle(style); } catch { /* ignore */ }
 }

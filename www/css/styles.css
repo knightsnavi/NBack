@@ -1,5 +1,11 @@
 /* ---------- tokens ---------- */
 :root {
+  /* Safe area. The Android shell draws edge to edge: a current WebView reports the bars through
+     env(), an older one gets them from Capacitor as --safe-area-inset-* instead. Take the larger. */
+  --sa-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sa-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --sa-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --sa-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
   --topbar-h: 56px;
   --radius: 20px;
   --radius-sm: 14px;
@@ -98,10 +104,10 @@ kbd { background: var(--surface-2); border: 1px solid var(--border); border-radi
   height: 100dvh;
   display: grid;
   grid-template-rows: var(--tb) minmax(0, 1fr);
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: var(--sa-top);
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
+  padding-bottom: var(--sa-bottom);
 }
 .topbar { display: flex; align-items: center; gap: 6px; padding: 0 var(--pad-x); overflow: hidden; }
 .app[data-screen="play"] { --tb: 0px; }
@@ -192,7 +198,7 @@ html[data-layout="landscape"][data-posture="single"][data-width="wide"] .app[dat
 html[data-posture="tabletop"][data-hinge="on"] .game {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows:
-    calc(var(--seg-a-h) - var(--tb) - var(--game-pt) - env(safe-area-inset-top))
+    calc(var(--seg-a-h) - var(--tb) - var(--game-pt) - var(--sa-top))
     var(--hinge-h)
     minmax(0, 1fr);
   grid-template-areas: "stage" "hinge" "side";
@@ -206,7 +212,7 @@ html[data-posture="tabletop"][data-hinge="on"] .side { padding-top: 12px; }
 /* book: hinge runs vertically, grid on the left screen, controls on the right */
 html[data-posture="book"][data-hinge="on"] .game {
   grid-template-columns:
-    calc(var(--seg-a-w) - var(--pad-x) - env(safe-area-inset-left))
+    calc(var(--seg-a-w) - var(--pad-x) - var(--sa-left))
     var(--hinge-w)
     minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -216,7 +222,7 @@ html[data-posture="book"][data-hinge="on"] .game {
 html[data-posture="book"][data-hinge="on"] .hinge-gap { display: block; }
 html[data-posture="book"][data-hinge="on"] .side { padding-left: 14px; }
 html[data-posture="book"][data-hinge="on"] .stage { padding-right: 10px; }
-html[data-posture="book"][data-hinge="on"] .topbar { width: calc(var(--seg-a-w) - env(safe-area-inset-left)); }
+html[data-posture="book"][data-hinge="on"] .topbar { width: calc(var(--seg-a-w) - var(--sa-left)); }
 
 /* ---------- board ---------- */
 .board {
@@ -287,7 +293,7 @@ html[data-posture="book"][data-hinge="on"] .topbar { width: calc(var(--seg-a-w) 
 .hud .icon-btn { background: color-mix(in oklab, var(--text) 7%, transparent); border-radius: 50%; }
 
 /* ---------- action zones: flat, edge to edge, in the thumb band ---------- */
-.actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; margin: 0 calc(-1 * var(--pad-x)) calc(-1 * var(--pad-x) - env(safe-area-inset-bottom)); }
+.actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; margin: 0 calc(-1 * var(--pad-x)) calc(-1 * var(--pad-x) - var(--sa-bottom)); }
 html[data-handed="left"] .actions { direction: rtl; }
 html[data-handed="left"] .action { direction: ltr; }
 .action {
@@ -295,7 +301,7 @@ html[data-handed="left"] .action { direction: ltr; }
   height: clamp(92px, 15dvh, 140px); border: 0; border-radius: 0;
   background: var(--stream); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--sa-bottom);
   font-weight: 800; font-size: 1.05rem; letter-spacing: .04em; text-transform: uppercase;
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
   transition: filter .1s ease, box-shadow .12s ease; position: relative; overflow: hidden;
@@ -322,8 +328,8 @@ html[data-handed="left"] .action { direction: ltr; }
 
 /* landscape / book: the control column becomes stacked zones that fill it */
 html[data-layout="landscape"][data-posture="single"][data-width="wide"] .actions,
-html[data-posture="book"][data-hinge="on"] .actions { grid-auto-flow: row; grid-auto-rows: minmax(0, 1fr); flex: 1; min-height: 0; direction: ltr; margin: auto calc(-1 * var(--pad-x)) calc(-1 * var(--pad-x) - env(safe-area-inset-bottom)) 0; max-height: 60dvh; width: calc(100% + var(--pad-x)); }
-html[data-layout="landscape"][data-posture="single"][data-width="wide"][data-handed="left"] .actions { margin: auto 0 calc(-1 * var(--pad-x) - env(safe-area-inset-bottom)) calc(-1 * var(--pad-x)); }
+html[data-posture="book"][data-hinge="on"] .actions { grid-auto-flow: row; grid-auto-rows: minmax(0, 1fr); flex: 1; min-height: 0; direction: ltr; margin: auto calc(-1 * var(--pad-x)) calc(-1 * var(--pad-x) - var(--sa-bottom)) 0; max-height: 60dvh; width: calc(100% + var(--pad-x)); }
+html[data-layout="landscape"][data-posture="single"][data-width="wide"][data-handed="left"] .actions { margin: auto 0 calc(-1 * var(--pad-x) - var(--sa-bottom)) calc(-1 * var(--pad-x)); }
 html[data-layout="landscape"][data-posture="single"][data-width="wide"] .action,
 html[data-posture="book"][data-hinge="on"] .action { height: auto; min-height: 84px; flex-direction: row; gap: 14px; border-radius: 0; }
 /* tabletop: the lower screen is the two zones */
@@ -506,7 +512,7 @@ html[data-layout="landscape"] .video-dialog video { max-height: 62dvh; }
 
 /* ---------- toast ---------- */
 .toast {
-  position: fixed; left: 50%; top: calc(var(--topbar-h) + env(safe-area-inset-top) + 6px); transform: translate(-50%, -16px);
+  position: fixed; left: 50%; top: calc(var(--topbar-h) + var(--sa-top) + 6px); transform: translate(-50%, -16px);
   background: var(--text); color: var(--surface); padding: 12px 18px; border-radius: 16px; font-weight: 700;
   opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: min(92vw, 420px); text-align: center; z-index: 50;
 }
@@ -588,7 +594,7 @@ html[data-width="compact"] .app[data-screen="home"] .panel { gap: 14px; }
 /* The control area keeps one height for the whole tutorial, whatever the coach text says. */
 .app[data-tutorial="on"] .game { grid-template-rows: minmax(0, 1fr) clamp(300px, 46dvh, 420px); }
 html[data-posture="tabletop"][data-hinge="on"] .app[data-tutorial="on"] .game {
-  grid-template-rows: calc(var(--seg-a-h) - var(--tb) - var(--game-pt) - env(safe-area-inset-top)) var(--hinge-h) minmax(0, 1fr);
+  grid-template-rows: calc(var(--seg-a-h) - var(--tb) - var(--game-pt) - var(--sa-top)) var(--hinge-h) minmax(0, 1fr);
 }
 html[data-posture="book"][data-hinge="on"] .app[data-tutorial="on"] .game,
 html[data-layout="landscape"][data-posture="single"][data-width="wide"] .app[data-tutorial="on"] .game { grid-template-rows: minmax(0, 1fr); }

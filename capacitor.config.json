@@ -10,6 +10,10 @@
     "LocalNotifications": {
       "smallIcon": "ic_stat_nback",
       "iconColor": "#7c5cff"
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
     }
   }
 }
