@@ -5,10 +5,11 @@
 // Every transition goes through this module, so a second tap on Start, a back
 // gesture during the countdown, or the app going to the background can never
 // leave two sessions running or a countdown that cannot be cancelled.
-import { $, toast, confirmDialog, reduceMotion, sleep } from './dom.js';
-import { state, audio, saveSettings } from './state.js';
+import { $, app, toast, confirmDialog, reduceMotion, sleep } from './dom.js';
+import { state, audio, saveSettings, assistActive } from './state.js';
 import { show } from './nav.js';
 import { Runner } from './runner.js';
+import { renderStrip, renderAssistStrip } from './strip.js';
 import * as G from './game.js';
 import * as S from './storage.js';
 import * as ST from './stats.js';
@@ -25,6 +26,7 @@ let sessionStart = 0;
 let pausedMs = 0;
 let pauseStartedAt = 0;
 let finishedHandler = null;
+let assisted = false;   // this session shows the recent turns and will not change the level
 
 export const sessionPhase = () => phase;
 export const sessionActive = () => phase !== 'idle';
@@ -54,6 +56,14 @@ function hudText(text) {
 function hideCountdown() {
   $('#countdown').hidden = true;
   $('#n-badge').hidden = false;
+}
+
+/** Assisted practice reserves the strip's space for the whole session, so nothing moves when turns arrive. */
+function setAssist(on, slots = 0) {
+  assisted = on;
+  app.dataset.assist = on ? 'on' : 'off';
+  $('#strip').hidden = !on;
+  if (on) renderStrip([], {}, slots);
 }
 
 function showOverlay(reason) {
@@ -103,6 +113,7 @@ export async function startSession() {
   pausedMs = 0;
   setZones(sequence.streams);
   setBadge(n);
+  setAssist(assistActive(), n + 1);
   $('#board-overlay').hidden = true;
   show('play');
   renderProgress(-1);
@@ -114,8 +125,9 @@ export async function startSession() {
   sessionStart = Date.now();
   runner = new Runner(sequence, { interval: s.interval, stimulusMs: s.stimulusMs }, {
     onTrialStart: (i, trial) => {
-      lightCell(trial.values.position, sequence.streams.includes('color') ? trial.values.color : null);
+      if (sequence.streams.includes('position')) lightCell(trial.values.position, sequence.streams.includes('color') ? trial.values.color : null);
       if (sequence.streams.includes('sound')) speakLetter(trial.values.sound);
+      if (assisted) renderAssistStrip(sequence, i);
       renderProgress(i);
       hudText(i < sequence.n ? `Memorize ${i + 1} of ${sequence.n}` : '');
     },
@@ -137,6 +149,7 @@ export async function startSession() {
 function cancelStart() {
   token++;
   hideCountdown();
+  setAssist(false);
   setPhase('idle');
   show('home');
 }
@@ -212,6 +225,7 @@ export function abortSession() {
   runner = null;
   hideCountdown();
   clearCells();
+  setAssist(false);
   $('#board-overlay').hidden = true;
   setPhase('idle');
 }
@@ -221,11 +235,13 @@ function finish(responses) {
   const s = state.settings;
   const seq = sequence;
   const score = G.scoreBlock(seq, responses);
-  const next = s.adaptive ? G.nextN(seq.n, score, { rule: s.progression }) : seq.n;
+  const wasAssisted = assisted;
+  const next = s.adaptive && !wasAssisted ? G.nextN(seq.n, score, { rule: s.progression }) : seq.n;
   const entry = {
     ts: Date.now(),
     n: seq.n,
     nextN: next,
+    ...(wasAssisted ? { assisted: true } : {}),
     mode: seq.mode,
     length: s.length,
     trials: seq.trials.length,
@@ -239,6 +255,7 @@ function finish(responses) {
   state.history = S.appendHistory(entry);
   runner = null;
   clearCells();
+  setAssist(false);
 
   if (next !== seq.n) {
     S.setLevel(s, next, seq.mode); // each mode keeps its own level

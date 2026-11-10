@@ -16,19 +16,23 @@ export function modesPlayed(history) {
   return Object.keys(MODE_LABELS).filter(m => seen.has(m));
 }
 
+/** Sessions played without the strip of recent turns: the only ones that say anything about performance. */
+export const unassisted = history => history.filter(h => !h.assisted);
+
 export function summarize(history, now = Date.now()) {
   const today = dayKey(now);
+  const scored = unassisted(history);
   const byDay = new Map();
   for (const h of history) byDay.set(dayKey(h.ts), (byDay.get(dayKey(h.ts)) || 0) + 1);
 
   const weekAgo = addDays(now, -6) - 12 * 3600000; // start of the day six days back
-  const last7 = history.filter(h => h.ts >= weekAgo);
+  const last7 = scored.filter(h => h.ts >= weekAgo);
   const avg = list => (list.length ? list.reduce((a, b) => a + b, 0) / list.length : null);
 
   const streamAcc = {};
   const streamRt = {};
   for (const s of ['position', 'sound', 'color']) {
-    const recent = history.slice(-20).filter(h => h.perStream && h.perStream[s]);
+    const recent = scored.slice(-20).filter(h => h.perStream && h.perStream[s]);
     streamAcc[s] = avg(recent.map(h => h.perStream[s].accuracy));
     streamRt[s] = avg(recent.map(h => h.perStream[s].meanRt).filter(v => v != null));
   }
@@ -45,18 +49,19 @@ export function summarize(history, now = Date.now()) {
     todayCount: byDay.get(today) || 0,
     streak: computeStreak(history, now),
     longestStreak: longestStreak(history),
-    bestN: history.reduce((m, h) => Math.max(m, h.n), 0),
+    assistedSessions: history.length - scored.length,
+    bestN: scored.reduce((m, h) => Math.max(m, h.n), 0),
     // levels reached in the full game (Dual or Triple), for achievements
-    bestFullN: history.reduce((m, h) => (h.mode === 'dual' || h.mode === 'triple' ? Math.max(m, h.n, h.nextN) : m), 0),
+    bestFullN: scored.reduce((m, h) => (h.mode === 'dual' || h.mode === 'triple' ? Math.max(m, h.n, h.nextN) : m), 0),
     currentN: last ? last.nextN : null,
     avgN7: avg(last7.map(h => h.n)),
     avgAcc7: avg(last7.map(h => h.accuracy)),
-    avgAccAll: avg(history.map(h => h.accuracy)),
+    avgAccAll: avg(scored.map(h => h.accuracy)),
     totalMs: history.reduce((sum, h) => sum + (h.durationMs || 0), 0),
-    bestAccuracy: history.reduce((m, h) => Math.max(m, h.accuracy), 0),
+    bestAccuracy: scored.reduce((m, h) => Math.max(m, h.accuracy), 0),
     mostInDay: Math.max(0, ...byDay.values()),
-    fastestRt: history.reduce((m, h) => (h.meanRt != null && (m == null || h.meanRt < m) ? h.meanRt : m), null),
-    perfectSessions: history.filter(h => h.errors === 0 && h.n >= 2).length,
+    fastestRt: scored.reduce((m, h) => (h.meanRt != null && (m == null || h.meanRt < m) ? h.meanRt : m), null),
+    perfectSessions: scored.filter(h => h.errors === 0 && h.n >= 2).length,
     streamAcc,
     streamRt,
     weakest,
@@ -67,12 +72,12 @@ export function summarize(history, now = Date.now()) {
 
 /** Series for the N trend chart: last `count` sessions. */
 export function nTrend(history, count = 30) {
-  return history.slice(-count).map((h, i) => ({ x: i, y: h.n, ts: h.ts, label: `${h.n}-back` }));
+  return unassisted(history).slice(-count).map((h, i) => ({ x: i, y: h.n, ts: h.ts, label: `${h.n}-back` }));
 }
 
 /** Accuracy per stream over the last `count` sessions, one series per stream present. */
 export function accuracyTrend(history, count = 30) {
-  const recent = history.slice(-count);
+  const recent = unassisted(history).slice(-count);
   const series = [];
   for (const s of ['position', 'sound', 'color']) {
     const pts = [];
@@ -119,7 +124,7 @@ export function insights(summary, history, settings) {
       out.push(`${STREAM_LABELS[sorted[0][0]]} trails ${STREAM_LABELS[sorted[sorted.length - 1][0]].toLowerCase()} by ${gap} points over your last sessions. A few ${STREAM_LABELS[sorted[0][0]].toLowerCase()}-only sessions can close the gap.`);
     }
   }
-  const recent = history.slice(-5);
+  const recent = unassisted(history).slice(-5);
   if (recent.length >= 5) {
     const fa = recent.reduce((sum, h) => sum + Object.values(h.perStream || {}).reduce((a, m) => a + m.falseAlarms, 0), 0);
     const misses = recent.reduce((sum, h) => sum + Object.values(h.perStream || {}).reduce((a, m) => a + m.misses, 0), 0);

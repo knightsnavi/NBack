@@ -98,10 +98,10 @@ function renderHistoryList(h = ST.filterMode(state.history, activeFilter())) {
   }
   list.innerHTML = recent.map((e) => {
     const d = e.nextN - e.n;
-    const arrow = d > 0 ? '<span class="up">▲</span>' : d < 0 ? '<span class="down">▼</span>' : '<span class="muted">●</span>';
+    const arrow = e.assisted ? '' : d > 0 ? '<span class="up">▲</span>' : d < 0 ? '<span class="down">▼</span>' : '<span class="muted">●</span>';
     const streams = Object.keys(e.perStream).map(st => `${ST.STREAM_LABELS[st][0]} ${Math.round(e.perStream[st].accuracy * 100)}%`).join(' · ');
     return `<div class="hrow"><div class="hn">${e.n}</div>
-      <div><div>${ST.MODE_LABELS[e.mode]} · ${streams}</div><div class="hdate">${new Date(e.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · ${Math.round(e.durationMs / 1000)} s${e.meanRt != null ? ` · ${e.meanRt} ms` : ''}</div></div>
+      <div><div>${ST.MODE_LABELS[e.mode]}${e.assisted ? ' <span class="pill">assisted</span>' : ''} · ${streams}</div><div class="hdate">${new Date(e.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · ${Math.round(e.durationMs / 1000)} s${e.meanRt != null ? ` · ${e.meanRt} ms` : ''}</div></div>
       <div class="hacc">${Math.round(e.accuracy * 100)}% ${arrow}</div></div>`;
   }).join('');
   $('#btn-history-more').hidden = h.length <= historyShown;

@@ -125,3 +125,19 @@ test('streaks count calendar days, including across a daylight-saving change', (
   assert.equal(S.dayKey(S.addDays(at(2026, 11, 1, 0), 1)), '2026-11-02');
   assert.equal(S.dayKey(S.addDays(at(2026, 3, 8, 23), -1)), '2026-03-07');
 });
+
+test('assisted practice is recorded as such and can never move the level', () => {
+  assert.equal(S.sanitizeSettings({}).assist, false, 'off by default');
+  assert.equal(S.sanitizeSettings({ assist: true }).assist, true);
+  assert.equal(S.sanitizeSettings({ assist: 'yes' }).assist, false);
+  const plain = S.sanitizeEntry(goodEntry());
+  assert.equal('assisted' in plain, false, 'ordinary sessions carry no flag');
+  const assisted = S.sanitizeEntry(goodEntry({ assisted: true, nextN: 3 }));
+  assert.equal(assisted.assisted, true);
+  assert.equal(assisted.nextN, assisted.n, 'a backup cannot claim an assisted level-up');
+  assert.equal(S.sanitizeEntry(goodEntry({ assisted: 'true' })).assisted, undefined);
+  const csv = S.historyToCSV([plain, assisted]).split('\n');
+  const col = csv[0].split(',').indexOf('assisted');
+  assert.ok(col > 0);
+  assert.deepEqual([csv[1].split(',')[col], csv[2].split(',')[col]], ['no', 'yes']);
+});

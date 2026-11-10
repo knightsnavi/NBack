@@ -238,6 +238,66 @@ await check('a perfect Position game levels up Position only; the grid and zones
   await page.context().close();
 });
 
+await check('assisted practice shows the recent turns, marks the one to compare, and never changes the level', async () => {
+  const page = await open({ ...ONBOARDED, 'nback.settings.v1': { mode: 'position', assist: true, levels: { position: 2 }, length: 'short', interval: 1500, stimulusMs: 300, sound: false, tones: false, tutorialVoice: false } });
+  assert.equal(await page.textContent('#start-label'), 'Start practice');
+  assert.match(await page.textContent('#level-hint'), /level does not change/);
+  await page.click('#btn-start');
+  await page.waitForSelector('#countdown:not([hidden])');
+  assert.equal(await page.isVisible('#strip'), true, 'the strip is on screen from the countdown');
+  assert.equal(await page.$$eval('#strip .turn', els => els.length), 3, '2-back shows three turns');
+  const before = [await rect(page, '#board'), await rect(page, '#strip'), await rect(page, '#btn-position')].join('|');
+  // a bot that plays from the strip alone: press when the "compare" card shows the same square as the "now" card
+  await page.evaluate(() => {
+    window.__sizes = new Set();
+    window.__strip = [];
+    const r = (sel) => { const b = document.querySelector(sel).getBoundingClientRect(); return [b.x, b.y, b.width, b.height].map(v => Math.round(v * 10) / 10).join(','); };
+    const snap = () => { if (document.querySelector('#app').dataset.screen === 'play') window.__sizes.add(r('#board') + '|' + r('#strip') + '|' + r('#btn-position')); };
+    const lit = card => (card ? [...card.querySelectorAll('.mini i')].findIndex(i => i.classList.contains('on')) : -1);
+    new MutationObserver(() => {
+      snap();
+      const cards = [...document.querySelectorAll('#strip .turn')];
+      const now = cards[cards.length - 1];
+      if (!now.classList.contains('now')) return;
+      const back = document.querySelector('#strip .turn.back');
+      window.__strip.push({ now: now.querySelector('.num').textContent, back: back ? back.querySelector('.num').textContent : null, first: cards[0] === back, skipped: document.querySelectorAll('#strip .turn.skip').length });
+      if (back && lit(back) === lit(now)) {
+        setTimeout(() => { document.querySelector('#btn-position').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', button: 0 })); setTimeout(snap, 60); }, 400);
+      }
+    }).observe(document.querySelector('#strip'), { childList: true });
+  });
+  await waitScreen(page, 'results', 45000);
+  const sizes = await page.evaluate(() => [...window.__sizes]);
+  assert.deepEqual(sizes, [before], 'the grid, the strip and the zones keep one size and place for the whole session');
+  const strip = await page.evaluate(() => window.__strip);
+  assert.equal(strip.length, 17, 'the strip updates on every item of a short 2-back');
+  assert.deepEqual(strip[0], { now: 'Turn 1', back: null, first: false, skipped: 0 });
+  assert.deepEqual(strip[2], { now: 'Turn 3', back: 'Turn 1', first: true, skipped: 1 }, 'turn 3 is compared with turn 1, with turn 2 dimmed');
+  assert.deepEqual(strip[16], { now: 'Turn 17', back: 'Turn 15', first: true, skipped: 1 });
+  const [entry] = await history(page);
+  assert.equal(entry.errors, 0, 'the strip alone is enough to play a perfect round');
+  assert.deepEqual([entry.n, entry.nextN, entry.assisted], [2, 2, true], 'a perfect assisted round does not level up');
+  assert.equal((await settings(page)).levels.position, 2);
+  assert.match(await page.textContent('.res-hero'), /Assisted round, so your level stays at 2-back/);
+  assert.match(await page.textContent('#res-tip'), /Turn Assist off/);
+  assert.equal(await page.textContent('#btn-again'), 'Practice again');
+  assert.equal(await page.isVisible('#strip'), false, 'the strip goes away with the session');
+  // switching Assist off on the home screen goes back to a normal session
+  await page.click('#btn-home');
+  assert.match(await page.textContent('#last-line'), /\(assisted\)/);
+  await page.click('#assist');
+  assert.equal(await page.textContent('#start-label'), 'Start session');
+  assert.equal((await settings(page)).assist, false);
+  // above 3-back the strip would not fit, so Assist says so and stays out of the way
+  await page.click('#assist');
+  await page.click('#n-plus');
+  await page.click('#n-plus');
+  assert.equal(await page.textContent('#level-n'), '4');
+  assert.match(await page.textContent('#assist-sub'), /up to 3-back/);
+  assert.equal(await page.textContent('#start-label'), 'Start session');
+  await page.context().close();
+});
+
 await check('missing every target at Position drops nothing below 1 and explains what is needed', async () => {
   const page = await open({ ...FAST, 'nback.settings.v1': { ...FAST['nback.settings.v1'], levels: { position: 2 } } });
   await page.click('#btn-start');

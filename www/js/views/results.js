@@ -3,6 +3,7 @@ import { $, toast, reduceMotion, root } from '../dom.js';
 import { state } from '../state.js';
 import { levelUpGap } from '../game.js';
 import * as ST from '../stats.js';
+import { ASSIST_MAX_N } from '../strip.js';
 import { ring } from '../charts.js';
 import * as N from '../native.js';
 
@@ -19,6 +20,7 @@ function closeness(score) {
 }
 
 function headlineFor(entry, score) {
+  if (entry.assisted) return ['Good practice!', `Assisted round, so your level stays at ${entry.n}-back`];
   const delta = entry.nextN - entry.n;
   if (delta > 0) return ['Awesome!', `You move up to ${entry.nextN}-back`];
   if (!state.settings.adaptive) return [score.accuracy >= 0.85 ? 'Excellent!' : 'Nice work!', `${entry.n}-back · ${plural(score.errors, 'mistake')}`];
@@ -62,7 +64,21 @@ export function renderResults(entry, score) {
       <tr class="total"><td>Mistakes</td>${streams.map(st => `<td class="v ${score.perStream[st].errors === 0 ? 'zero' : ''}">${score.perStream[st].errors}</td>`).join('')}</tr>
     </tbody></table>`;
 
-  $('#btn-again').textContent = delta !== 0 ? `Play again at ${entry.nextN}-back` : 'Play again';
+  // Point at Assist after a rough unassisted round, and at the way out of it after a strong assisted one.
+  const tip = $('#res-tip');
+  const errorsOk = score.streams.every(st => score.perStream[st].errors < 3);
+  if (entry.assisted) {
+    tip.textContent = errorsOk
+      ? 'That was a clean round. Turn Assist off on the home screen to play for real and move up.'
+      : 'Assist shows the recent turns. Rounds played with it do not change your level.';
+  } else if (!state.settings.assist && entry.n <= ASSIST_MAX_N && delta <= 0 && score.accuracy < 0.6) {
+    tip.textContent = `Finding ${entry.n}-back hard? Turn on Assist on the home screen to see the recent turns while you play.`;
+  } else {
+    tip.textContent = '';
+  }
+  tip.hidden = !tip.textContent;
+
+  $('#btn-again').textContent = entry.assisted ? 'Practice again' : delta !== 0 ? `Play again at ${entry.nextN}-back` : 'Play again';
   last = { entry, score };
   if (delta > 0 && !reduceMotion.matches) confetti();
 }
@@ -71,7 +87,7 @@ async function shareResults() {
   if (!last) return;
   const { entry, score } = last;
   const lines = [
-    `NBack Trainer: ${ST.MODE_LABELS[entry.mode]} ${entry.n}-back, ${Math.round(score.accuracy * 100)}% correct.`,
+    `NBack Trainer: ${ST.MODE_LABELS[entry.mode]} ${entry.n}-back${entry.assisted ? ' (assisted practice)' : ''}, ${Math.round(score.accuracy * 100)}% correct.`,
     ...score.streams.map(st => `${ST.STREAM_LABELS[st]} ${Math.round(score.perStream[st].accuracy * 100)}% (${score.perStream[st].hits} correct, ${score.perStream[st].misses} missed, ${score.perStream[st].falseAlarms} false)`),
   ];
   if (entry.nextN > entry.n) lines.push(`Level up to ${entry.nextN}-back!`);

@@ -1,5 +1,5 @@
 /* NBack Trainer service worker: offline app shell + daily reminder check. */
-const VERSION = 'nback-v6';
+const VERSION = 'nback-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const ASSETS = [
   './js/session.js',
   './js/runner.js',
   './js/coach.js',
+  './js/strip.js',
   './js/tutorial.js',
   './js/game.js',
   './js/audio.js',

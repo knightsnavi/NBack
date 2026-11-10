@@ -576,13 +576,17 @@ html[data-width="compact"] .app[data-screen="home"] .panel { gap: 14px; }
    Tutorial: a strip of recent turns above the grid. Its space is
    reserved for the whole tutorial, so nothing changes size.
    ============================================================ */
-.strip { position: absolute; top: 0; left: 0; right: 0; height: 102px; padding-top: 10px; display: grid; grid-template-columns: repeat(4, minmax(0, 76px)); justify-content: center; gap: 8px; z-index: 4; }
+.strip { position: absolute; top: 0; left: 0; right: 0; height: 102px; padding-top: 10px; display: grid; grid-template-columns: repeat(var(--slots, 4), minmax(0, 76px)); justify-content: center; gap: 8px; z-index: 4; }
 .turn { position: relative; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); display: grid; grid-template-rows: 16px 1fr 22px; justify-items: center; align-items: center; padding: 5px 4px 4px; }
 .turn.empty { background: transparent; box-shadow: inset 0 0 0 1px var(--border); opacity: .4; }
 .turn .num { font-size: .58rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .turn .mini { width: 34px; height: 34px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
 .turn .mini i { border-radius: 3px; background: color-mix(in oklab, var(--text) 9%, transparent); }
 .turn .mini i.on { background: var(--lit); }
+.turn .mini.none { display: none; }
+.turn:has(.mini.none) { grid-template-rows: 16px 1fr; }
+.turn:has(.mini.none) .letter { font-size: 1.7rem; }
+.turn .letter:empty { display: none; }
 .turn .letter { font-weight: 900; font-size: 1rem; line-height: 1; }
 .turn.now { box-shadow: inset 0 0 0 3px var(--accent); }
 .turn.back { box-shadow: inset 0 0 0 3px var(--accent-2); }
@@ -598,6 +602,29 @@ html[data-posture="tabletop"][data-hinge="on"] .app[data-tutorial="on"] .game {
 }
 html[data-posture="book"][data-hinge="on"] .app[data-tutorial="on"] .game,
 html[data-layout="landscape"][data-posture="single"][data-width="wide"] .app[data-tutorial="on"] .game { grid-template-rows: minmax(0, 1fr); }
+
+/* ============================================================
+   Assisted practice: the same strip during a real session, under the
+   HUD. Its space is reserved from the countdown to the last item.
+   ============================================================ */
+.app[data-assist="on"] .stage { padding-top: 150px; }
+.app[data-assist="on"] .strip { top: 44px; }
+/* Tabletop: the stage is wide and short, so the strip becomes a column beside the grid and the grid keeps its height. */
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .stage { padding-top: 44px; }
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .strip {
+  top: 44px; bottom: 10px; right: auto; left: max(0px, calc(50% - 50cqh - 182px)); width: 170px; height: auto; padding: 0;
+  grid-template-columns: minmax(0, 1fr); grid-auto-rows: 50px; align-content: center; gap: 8px;
+}
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .turn { grid-template-rows: none; grid-template-columns: 52px 34px 1fr; padding: 4px 8px; justify-items: start; }
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .turn .mini { width: 30px; height: 30px; }
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .turn .letter { justify-self: center; font-size: 1.15rem; }
+html[data-posture="tabletop"][data-hinge="on"] .app[data-assist="on"] .turn .tag { top: -8px; left: auto; right: 8px; transform: none; }
+
+.assist-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 16px; border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); min-height: 56px; cursor: pointer; }
+.assist-row > span { display: grid; gap: 1px; font-size: .95rem; }
+.assist-row small { color: var(--muted); font-size: .8rem; font-weight: 500; }
+.res-tip { margin: 0; text-align: center; color: var(--muted); font-size: .88rem; font-weight: 600; }
+.hrow .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: .7rem; font-weight: 800; background: color-mix(in oklab, var(--accent) 16%, transparent); color: var(--accent); vertical-align: 1px; }
 
 /* ============================================================
    Progress

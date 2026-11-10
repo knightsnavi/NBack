@@ -134,8 +134,13 @@
             <button class="chip" data-mode="sound" role="radio" aria-checked="false">Sound <small>letters only</small></button>
           </div>
 
+          <label class="assist-row">
+            <span><b>Assist</b><small id="assist-sub">Shows the recent turns and which one to compare</small></span>
+            <input type="checkbox" class="switch" id="assist">
+          </label>
+
           <button class="btn-primary big" id="btn-start">
-            <span>Start session</span>
+            <span id="start-label">Start session</span>
             <small id="start-meta"></small>
           </button>
 
@@ -158,6 +163,7 @@
         <section class="view view-results" id="view-results" hidden>
           <div class="tiles three" id="res-tiles"></div>
           <div class="card" id="res-streams"></div>
+          <p class="res-tip" id="res-tip" hidden></p>
           <div class="btn-row">
             <button class="btn-primary" id="btn-again">Play again</button>
           </div>
@@ -241,6 +247,10 @@
             <label class="row-setting">
               <span>Auto level<small>Move the level up or down after each session</small></span>
               <input type="checkbox" class="switch" data-setting="adaptive">
+            </label>
+            <label class="row-setting">
+              <span>Assist<small>Shows the recent turns above the grid and marks the one to compare with. Works up to 3-back. Assisted sessions count toward your streak but never change your level.</small></span>
+              <input type="checkbox" class="switch" data-setting="assist">
             </label>
             <label class="row-setting">
               <span>Level-up rule<small>Standard is the research rule: under 3 mistakes on each button moves you up, more than 5 on any button moves you down. Relaxed moves you up at 80% accuracy.</small></span>

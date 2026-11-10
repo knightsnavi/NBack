@@ -2,6 +2,7 @@
 import * as S from './storage.js';
 import { LETTERS } from './game.js';
 import { LetterAudio } from './audio.js';
+import { ASSIST_MAX_N } from './strip.js';
 
 export const state = {
   settings: S.loadSettings(),
@@ -23,4 +24,9 @@ export function saveSettings() {
 /** The level for the mode that is currently selected. */
 export function currentLevel() {
   return S.levelFor(state.settings);
+}
+
+/** Assist is switched on and the current level is low enough for the strip to fit. */
+export function assistActive() {
+  return state.settings.assist && currentLevel() <= ASSIST_MAX_N;
 }

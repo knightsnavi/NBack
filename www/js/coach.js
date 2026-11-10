@@ -4,6 +4,7 @@ import { $, $$, app, toast, sleep } from './dom.js';
 import { state, audio, saveSettings, currentLevel } from './state.js';
 import { show, refresh } from './nav.js';
 import { createTutorial } from './tutorial.js';
+import { renderStrip } from './strip.js';
 import { abortSession, pauseSession, sessionActive } from './session.js';
 import { clearCells, lightCell, speakLetter, setBadge, setZones, clearZoneFeedback, flash, pulsePress, hintZones, buzz, sfx } from './board.js';
 import * as S from './storage.js';
@@ -73,31 +74,6 @@ export function toggleTutorialVoice() {
   if (state.settings.tutorialVoice) narrate(narration.key); else stopNarration();
   toast(state.settings.tutorialVoice ? 'Voice-over on' : 'Voice-over off', 1200);
   refresh();
-}
-
-/* ---------- turn strip ---------- */
-const SLOTS = 4;
-function miniGrid(pos) {
-  let html = '';
-  for (let i = 0; i < 9; i++) html += `<i class="${i === pos ? 'on' : ''}"></i>`;
-  return html;
-}
-
-/** Always four fixed slots, so the strip never changes size as turns arrive. */
-function renderStrip(turns, marks = {}) {
-  const strip = $('#strip');
-  let html = '';
-  for (let k = 0; k < SLOTS; k++) {
-    const turn = turns[k];
-    if (!turn) { html += '<div class="turn empty" aria-hidden="true"></div>'; continue; }
-    const cls = turn.n === marks.now ? 'now' : turn.n === marks.back ? 'back' : turn.n === marks.skip ? 'skip' : '';
-    const tag = turn.n === marks.back ? '<span class="tag">compare</span>' : turn.n === marks.now ? '<span class="tag">now</span>' : '';
-    html += `<div class="turn ${cls}"><span class="num">Turn ${turn.n}</span><span class="mini">${miniGrid(turn.pos)}</span><span class="letter">${turn.letter}</span>${tag}</div>`;
-  }
-  strip.innerHTML = html;
-  const back = turns.find(x => x.n === marks.back);
-  const now = turns.find(x => x.n === marks.now);
-  strip.setAttribute('aria-label', now && back ? `Turn ${now.n} is compared with turn ${back.n}` : 'Recent turns');
 }
 
 /* ---------- tutorial ---------- */
@@ -170,7 +146,7 @@ function endTutorial(reason) {
   setBadge(currentLevel());
   N.keepAwake(false);
   show('home');
-  toast(reason === 'completed' ? 'Tutorial complete. Ready for a real session!' : 'Tutorial skipped. Find it again under Settings → Learn.', 3200);
+  toast(reason === 'completed' ? 'Tutorial complete. Want the strip of recent turns in real games? Turn on Assist on the home screen.' : 'Tutorial skipped. Find it again under Settings → Learn.', reason === 'completed' ? 5200 : 3200);
 }
 
 export function tutorialPress(stream) {

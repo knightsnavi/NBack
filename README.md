@@ -40,6 +40,9 @@ names), and single-stream **Position** and **Sound** for focused practice.
 - **A play screen that never moves**: the grid and the response zones keep exactly one size and
   position from the countdown to the last item; feedback is color, glow, sound and vibration only.
   Zones glow green for a correct press and red for a wrong one.
+- **Assisted practice**: a switch on the home screen keeps the strip of recent turns on screen during
+  a real session, with the turn to compare against highlighted. It works up to 3-back. Assisted
+  sessions count toward the streak and daily goal but never change the level, records or trends.
 - **Guided tutorial with voice-over**: teaches the two buttons at 1-back, then 2-back with a strip
   of recent turns that highlights which one to compare against, and ends with an unhinted 2-back
   practice round. Offered on first launch and under Settings → Learn.
@@ -121,7 +124,8 @@ How the code is organised:
 | `www/js/game.js` | Pure engine: sequence generation, scoring, the level-up rules |
 | `www/js/runner.js` | Timing for one session with an injectable clock: trials, grace window, pause and resume |
 | `www/js/session.js` | Session state machine: start, countdown, pause, resume, quit, finish |
-| `www/js/tutorial.js`, `coach.js` | Tutorial script, and its on-screen coach, narration and turn strip |
+| `www/js/tutorial.js`, `coach.js` | Tutorial script, and its on-screen coach and narration |
+| `www/js/strip.js` | The strip of recent turns, used by the tutorial and by assisted practice |
 | `www/js/views/` | Home, Results, Progress, Settings |
 | `www/js/storage.js` | Validated settings, history and backups; calendar-day math |
 | `www/js/native.js` | Bridge to the Android shell, with browser fallbacks for every call |

@@ -19,6 +19,7 @@ export const MAX_N = 9;
 export const DEFAULT_SETTINGS = Object.freeze({
   levels: Object.freeze({ dual: 1, triple: 1, position: 1, sound: 1 }), // each mode keeps its own level
   adaptive: true,
+  assist: false,           // show the recent turns during a session; assisted sessions never change the level
   progression: 'standard', // 'standard' (under 3 mistakes per button) | 'relaxed' (80% accuracy)
   mode: 'dual',            // 'dual' | 'triple' | 'position' | 'sound'
   length: 'standard',      // 'short' | 'standard' | 'long'
@@ -62,6 +63,7 @@ export function sanitizeSettings(raw) {
   return {
     levels,
     adaptive: bool(r.adaptive, d.adaptive),
+    assist: bool(r.assist, d.assist),
     progression: oneOf(r.progression, ['standard', 'relaxed'], d.progression),
     mode: oneOf(r.mode, MODE_IDS, d.mode),
     length: oneOf(r.length, ['short', 'standard', 'long'], d.length),
@@ -118,10 +120,12 @@ export function sanitizeEntry(e) {
   }
   if (!Object.keys(perStream).length) return null;
   const list = Object.values(perStream);
+  const assisted = e.assisted === true;
   return {
     ts: Math.round(e.ts),
     n,
-    nextN: int(e.nextN, MIN_N, MAX_N, n),
+    nextN: assisted ? n : int(e.nextN, MIN_N, MAX_N, n), // assisted practice never moves the level
+    ...(assisted ? { assisted: true } : {}),
     mode: e.mode,
     length: oneOf(e.length, ['short', 'standard', 'long'], 'standard'),
     trials: int(e.trials, 1, 200, 20 + n),
@@ -326,7 +330,7 @@ export function importData(data) {
 }
 
 export function historyToCSV(history) {
-  const cols = ['date', 'time', 'mode', 'n', 'next_n', 'trials', 'interval_ms', 'duration_s', 'accuracy', 'errors', 'mean_rt_ms',
+  const cols = ['date', 'time', 'mode', 'n', 'next_n', 'assisted', 'trials', 'interval_ms', 'duration_s', 'accuracy', 'errors', 'mean_rt_ms',
     'position_accuracy', 'position_hits', 'position_misses', 'position_false_alarms',
     'sound_accuracy', 'sound_hits', 'sound_misses', 'sound_false_alarms',
     'color_accuracy', 'color_hits', 'color_misses', 'color_false_alarms'];
@@ -337,7 +341,7 @@ export function historyToCSV(history) {
     const acc = s => (ps(s) ? (ps(s).accuracy * 100).toFixed(1) : '');
     const f = (s, k) => (ps(s) ? ps(s)[k] : '');
     rows.push([
-      dayKey(h.ts), d.toTimeString().slice(0, 8), h.mode, h.n, h.nextN, h.trials, h.interval,
+      dayKey(h.ts), d.toTimeString().slice(0, 8), h.mode, h.n, h.nextN, h.assisted ? 'yes' : 'no', h.trials, h.interval,
       Math.round((h.durationMs || 0) / 1000), (h.accuracy * 100).toFixed(1), h.errors, h.meanRt ?? '',
       acc('position'), f('position', 'hits'), f('position', 'misses'), f('position', 'falseAlarms'),
       acc('sound'), f('sound', 'hits'), f('sound', 'misses'), f('sound', 'falseAlarms'),

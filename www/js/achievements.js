@@ -17,7 +17,7 @@ export const ACHIEVEMENTS = [
   { id: 'marathon', icon: '🏃', title: 'Marathon', desc: 'Play 10 sessions in one day', check: c => c.summary.mostInDay >= 10 },
   { id: 'hour', icon: '⏱️', title: 'One hour', desc: 'Train for a total of one hour', check: c => c.summary.totalMs >= 3600000 },
   { id: 'tenhours', icon: '🌙', title: 'Ten hours', desc: 'Train for a total of ten hours', check: c => c.summary.totalMs >= 36000000 },
-  { id: 'quick', icon: '🐇', title: 'Quick draw', desc: 'Average under 600 ms on a session with 90%+ accuracy', check: c => c.lastSession && c.lastSession.meanRt != null && c.lastSession.meanRt < 600 && c.lastSession.accuracy >= 0.9 },
+  { id: 'quick', icon: '🐇', title: 'Quick draw', desc: 'Average under 600 ms on a session with 90%+ accuracy', check: c => c.lastSession && !c.lastSession.assisted && c.lastSession.meanRt != null && c.lastSession.meanRt < 600 && c.lastSession.accuracy >= 0.9 },
   { id: 'goal', icon: '✅', title: 'Goal getter', desc: 'Hit your daily goal', check: c => c.settings.dailyGoal > 0 && c.summary.todayCount >= c.settings.dailyGoal },
 ];
 
