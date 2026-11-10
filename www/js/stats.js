@@ -1,14 +1,28 @@
 // Aggregates over session history: summary tiles, trends, records and insights.
-import { dayKey, computeStreak, longestStreak } from './storage.js';
+import { dayKey, addDays, computeStreak, longestStreak } from './storage.js';
 
 export const STREAM_LABELS = { position: 'Position', sound: 'Sound', color: 'Color' };
+
+export const MODE_LABELS = { dual: 'Dual', triple: 'Triple', position: 'Position', sound: 'Sound' };
+
+/** Sessions of one mode, or everything for 'all'. */
+export function filterMode(history, mode) {
+  return mode && mode !== 'all' ? history.filter(h => h.mode === mode) : history;
+}
+
+/** Modes that have at least one session, in menu order. */
+export function modesPlayed(history) {
+  const seen = new Set(history.map(h => h.mode));
+  return Object.keys(MODE_LABELS).filter(m => seen.has(m));
+}
 
 export function summarize(history, now = Date.now()) {
   const today = dayKey(now);
   const byDay = new Map();
   for (const h of history) byDay.set(dayKey(h.ts), (byDay.get(dayKey(h.ts)) || 0) + 1);
 
-  const last7 = history.filter(h => now - h.ts < 7 * 86400000);
+  const weekAgo = addDays(now, -6) - 12 * 3600000; // start of the day six days back
+  const last7 = history.filter(h => h.ts >= weekAgo);
   const avg = list => (list.length ? list.reduce((a, b) => a + b, 0) / list.length : null);
 
   const streamAcc = {};
@@ -32,6 +46,8 @@ export function summarize(history, now = Date.now()) {
     streak: computeStreak(history, now),
     longestStreak: longestStreak(history),
     bestN: history.reduce((m, h) => Math.max(m, h.n), 0),
+    // levels reached in the full game (Dual or Triple), for achievements
+    bestFullN: history.reduce((m, h) => (h.mode === 'dual' || h.mode === 'triple' ? Math.max(m, h.n, h.nextN) : m), 0),
     currentN: last ? last.nextN : null,
     avgN7: avg(last7.map(h => h.n)),
     avgAcc7: avg(last7.map(h => h.accuracy)),
@@ -74,7 +90,7 @@ export function dailyCounts(history, days = 14, now = Date.now()) {
   const byDay = new Map();
   for (const h of history) byDay.set(dayKey(h.ts), (byDay.get(dayKey(h.ts)) || 0) + 1);
   for (let i = days - 1; i >= 0; i--) {
-    const ts = now - i * 86400000;
+    const ts = addDays(now, -i);
     const key = dayKey(ts);
     out.push({ key, ts, count: byDay.get(key) || 0 });
   }
@@ -100,7 +116,7 @@ export function insights(summary, history, settings) {
     const sorted = Object.entries(s.streamAcc).filter(([, v]) => v != null).sort((a, b) => a[1] - b[1]);
     const gap = Math.round((sorted[sorted.length - 1][1] - sorted[0][1]) * 100);
     if (gap >= 10) {
-      out.push(`${STREAM_LABELS[sorted[0][0]]} trails ${STREAM_LABELS[sorted[sorted.length - 1][0]].toLowerCase()} by ${gap} points over your last sessions. A few ${STREAM_LABELS[sorted[0][0]].toLowerCase()}-only blocks can close the gap.`);
+      out.push(`${STREAM_LABELS[sorted[0][0]]} trails ${STREAM_LABELS[sorted[sorted.length - 1][0]].toLowerCase()} by ${gap} points over your last sessions. A few ${STREAM_LABELS[sorted[0][0]].toLowerCase()}-only sessions can close the gap.`);
     }
   }
   const recent = history.slice(-5);
@@ -113,6 +129,6 @@ export function insights(summary, history, settings) {
   if (s.todayCount >= settings.dailyGoal && settings.dailyGoal > 0) out.push('Daily goal done. Research blocks were about 20 minutes a day, so more is fine but not required.');
   else if (s.streak >= 3) out.push(`${s.streak}-day streak. Consistency matters more than session length.`);
   if (s.avgN7 != null && s.bestN > s.avgN7 + 1) out.push(`Your best is ${s.bestN}-back. Recent sessions average ${s.avgN7.toFixed(1)}; dips after a jump are normal.`);
-  if (!out.length) out.push('Steady work. Keep sessions short and regular, and let adaptive N do the pacing.');
+  if (!out.length) out.push('Steady work. Keep sessions short and regular, and let the automatic level do the pacing.');
   return out.slice(0, 3);
 }

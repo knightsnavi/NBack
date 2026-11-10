@@ -202,7 +202,7 @@ export async function tutorialWalk(vpName) {
   await shot(page, `${vpName}-tutorial-0`);
   const pressHinted = async () => {
     for (let k = 0; k < 3; k++) {
-      const hinted = await page.$$eval('.action.hint', els => els.map(e => e.dataset.stream));
+      const hinted = await page.$$eval('.action.cue', els => els.map(e => e.dataset.stream));
       if (!hinted.length) return;
       await page.dispatchEvent(`.action[data-stream="${hinted[0]}"]`, 'pointerdown', { button: 0, pointerType: 'touch' });
       await page.waitForTimeout(250);

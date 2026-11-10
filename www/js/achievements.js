@@ -2,10 +2,10 @@
 
 export const ACHIEVEMENTS = [
   { id: 'first', icon: '🌱', title: 'First steps', desc: 'Complete your first session', check: c => c.summary.sessions >= 1 },
-  { id: 'n3', icon: '🎯', title: 'Three deep', desc: 'Reach 3-back', check: c => c.summary.currentN >= 3 || c.summary.bestN >= 3 },
-  { id: 'n4', icon: '🧠', title: 'Four deep', desc: 'Reach 4-back', check: c => c.summary.currentN >= 4 || c.summary.bestN >= 4 },
-  { id: 'n5', icon: '⚡', title: 'Five deep', desc: 'Reach 5-back', check: c => c.summary.currentN >= 5 || c.summary.bestN >= 5 },
-  { id: 'n6', icon: '🚀', title: 'Six deep', desc: 'Reach 6-back', check: c => c.summary.currentN >= 6 || c.summary.bestN >= 6 },
+  { id: 'n3', icon: '🎯', title: 'Three deep', desc: 'Reach 3-back in Dual or Triple', check: c => c.summary.bestFullN >= 3 },
+  { id: 'n4', icon: '🧠', title: 'Four deep', desc: 'Reach 4-back in Dual or Triple', check: c => c.summary.bestFullN >= 4 },
+  { id: 'n5', icon: '⚡', title: 'Five deep', desc: 'Reach 5-back in Dual or Triple', check: c => c.summary.bestFullN >= 5 },
+  { id: 'n6', icon: '🚀', title: 'Six deep', desc: 'Reach 6-back in Dual or Triple', check: c => c.summary.bestFullN >= 6 },
   { id: 'perfect', icon: '💎', title: 'Flawless', desc: 'Finish a 2-back or higher with zero errors', check: c => c.summary.perfectSessions >= 1 },
   { id: 'streak3', icon: '🔥', title: 'Warming up', desc: 'Train 3 days in a row', check: c => c.summary.streak >= 3 },
   { id: 'streak7', icon: '🔥', title: 'One week', desc: 'Train 7 days in a row', check: c => c.summary.streak >= 7 },

@@ -1,215 +1,275 @@
 // Guided, interactive walkthrough. It drives the real board and buttons through
-// a small adapter (`ui`) so the player learns on the actual controls.
+// a small adapter (`ui`), so the player learns on the actual controls.
+//
+// Part 1 teaches the two buttons at 1-back (compare with the previous item).
+// Part 2 teaches 2-back, the level most people get stuck on: compare with the
+// item from two turns ago, skipping the last one. A strip of recent turns sits
+// above the grid with the turn to compare against highlighted. It ends with an
+// unhinted 2-back practice round.
 //
 // ui = {
-//   light(pos, letter)   light a cell and speak the letter
-//   clear()              unlight all cells
-//   hint(streams)        pulse the buttons the player should press (array, [] clears)
-//   coach({ step, steps, title, text, button, onButton })  show the coach card
-//   feedback(stream, ok) flash a button right/wrong
-//   sfx(kind)            play a UI sound
-//   badge(n)             set the centre N badge
-//   afterVoice(cb, fallbackMs)  run cb when the current narration ends (or after fallbackMs with voice off)
-//   done(reason)         'completed' | 'skipped'
+//   light(pos, letter)          light a cell and speak the letter
+//   clear()                     unlight all cells
+//   hint(streams)               pulse the buttons the player should press ([] clears)
+//   strip(turns, marks)         recent turns [{ n, pos, letter }], marks = { now, back, skip } turn numbers
+//   coach({ step, steps, title, text, button, onButton, voice, voiceDelay })
+//   feedback(stream, kind)      'good' | 'bad' | 'missed' on a button
+//   sfx(kind)                   play a UI sound
+//   badge(n)                    set the centre N badge
+//   afterVoice(cb, fallbackMs)  run cb when the current narration ends
+//   done(reason)                'completed' | 'skipped'
 // }
 
-const PRACTICE = [
-  { pos: 1, letter: 'C' },
-  { pos: 1, letter: 'H' }, // position match
-  { pos: 3, letter: 'H' }, // sound match
-  { pos: 3, letter: 'K' }, // position match
-  { pos: 6, letter: 'K' }, // sound match
-  { pos: 8, letter: 'K' }, // sound match
-  { pos: 8, letter: 'R' }, // position match
-  { pos: 2, letter: 'T' }, // nothing
+const STEPS = 12;
+
+// 2-back practice: [cell, letter]. Position targets at items 3, 5, 7, 8; sound targets at 4, 5, 8, 9.
+export const PRACTICE = [
+  [1, 'C'], [6, 'K'], [1, 'S'], [3, 'K'], [1, 'S'],
+  [7, 'T'], [1, 'Q'], [7, 'T'], [2, 'Q'], [8, 'L'],
 ];
+
+/** Which streams match `back` turns ago for item i of a [cell, letter] list. */
+export function targetsAt(items, i, back) {
+  const out = [];
+  if (i < back) return out;
+  if (items[i][0] === items[i - back][0]) out.push('position');
+  if (items[i][1] === items[i - back][1]) out.push('sound');
+  return out;
+}
 
 export function createTutorial(ui) {
   const t = { active: true, step: 0, timers: [] };
   const later = (fn, ms) => { const id = setTimeout(fn, ms); t.timers.push(id); return id; };
   const clearTimers = () => { for (const id of t.timers) clearTimeout(id); t.timers = []; };
-  const total = 8;
 
-  let expect = null;      // Set of streams still expected in this step
-  let onPress = null;     // custom press handler for the current step
-  let finish = () => {};
+  let turns = [];      // turns shown so far in the current part: { n, pos, letter }
+  let onPress = null;  // press handler for the current step
 
   function coach(title, text, button, onButton, voice = null, voiceDelay = 0) {
-    ui.coach({ step: t.step, steps: total, title, text, button, onButton, voice, voiceDelay });
+    ui.coach({ step: t.step, steps: STEPS, title, text, button, onButton, voice, voiceDelay });
   }
 
-  function flashStim(pos, letter, hold = 700) {
+  /** Present a new turn: light it, speak it, and show it on the strip. `back` = how many turns back to highlight. */
+  function present(pos, letter, back = 0, hold = 900) {
+    const n = turns.length + 1;
+    turns.push({ n, pos, letter });
     ui.light(pos, letter);
     later(() => ui.clear(), hold);
+    ui.strip(turns.slice(-4), {
+      now: n,
+      back: back && n - back >= 1 ? n - back : null,
+      skip: back === 2 && n - 1 >= 1 ? n - 1 : null,
+    });
+  }
+
+  function resetTurns() {
+    turns = [];
+    ui.strip([], {});
+  }
+
+  /** A step where exactly `expected` must be pressed. */
+  function expectPress(expected, wrong, right) {
+    const left = new Set(expected);
+    ui.hint([...left]);
+    onPress = (stream) => {
+      if (left.has(stream)) {
+        left.delete(stream);
+        ui.feedback(stream, 'good');
+        ui.sfx('good');
+        ui.hint([...left]);
+        if (left.size === 0) { onPress = null; right(); }
+      } else {
+        ui.feedback(stream, 'bad');
+        ui.sfx('bad');
+        wrong(stream);
+      }
+    };
   }
 
   const steps = [
-    // 0 — welcome
+    // ---------- Part 1: the two buttons, at 1-back ----------
+    // 0
     () => {
       ui.clear();
       ui.badge(1);
-      ui.hint([]);
+      resetTurns();
       coach('Welcome to N-back',
         'Every few seconds one square lights up and a letter is spoken. Your job is to notice when something repeats from N steps ago. We start with 1-back: compare each item with the one just before it.',
         'Show me', () => go(1), 'welcome');
     },
-    // 1 — first stimulus
+    // 1
     () => {
-      later(() => flashStim(0, 'C'), 300);
+      later(() => present(0, 'C'), 300);
       coach('Watch and listen',
         'The top-left square lit up and you heard “C”. Keep both in mind. Tap Next to see the following item.',
         'Next', () => go(2), 'watch', 1300);
     },
-    // 2 — position match
+    // 2
     () => {
-      later(() => flashStim(0, 'H'), 300);
-      expect = new Set(['position']);
-      ui.hint(['position']);
+      later(() => present(0, 'H', 1), 300);
       coach('Same square!',
         'The same square lit up as one step ago, so this is a position match. Press the Position button now.',
         null, null, 'pos_match', 1200);
-      onPress = (stream) => {
-        if (stream === 'position') {
-          ui.feedback('position', true); ui.sfx('good');
-          expect = null; ui.hint([]);
-          coach('Nice', 'The letter changed from C to H, so there was no sound match: pressing Sound here would have been a wrong press. Doing nothing on a stream is often the right answer.', 'Next', () => go(3), 'pos_ok');
-        } else {
-          ui.feedback(stream, false); ui.sfx('bad');
-          coach('Not that one', 'The letter changed, so Sound is not a match here. The square repeated: press Position.', null, null, 'pos_wrong');
-        }
-      };
+      expectPress(['position'],
+        () => coach('Not that one', 'The letter changed, so Sound is not a match here. The square repeated: press Position.', null, null, 'pos_wrong'),
+        () => coach('Nice', 'The letter changed from C to H, so there was no sound match: pressing Sound here would have been a wrong press. Doing nothing on a stream is often the right answer.', 'Next', () => go(3), 'pos_ok'));
     },
-    // 3 — sound match
+    // 3
     () => {
-      later(() => flashStim(5, 'H'), 300);
-      expect = new Set(['sound']);
-      ui.hint(['sound']);
+      later(() => present(5, 'H', 1), 300);
       coach('Same letter!',
         'A different square this time, but you heard “H” again, the same as one step ago. Press Sound.',
         null, null, 'snd_match', 1200);
-      onPress = (stream) => {
-        if (stream === 'sound') {
-          ui.feedback('sound', true); ui.sfx('good');
-          expect = null; ui.hint([]);
-          coach('Good ear', 'Position and sound are judged separately. You can be right on one and wrong on the other in the same moment.', 'Next', () => go(4), 'snd_ok');
-        } else {
-          ui.feedback(stream, false); ui.sfx('bad');
-          coach('Not that one', 'The square moved, so Position is not a match. The letter repeated: press Sound.', null, null, 'snd_wrong');
-        }
-      };
+      expectPress(['sound'],
+        () => coach('Not that one', 'The square moved, so Position is not a match. The letter repeated: press Sound.', null, null, 'snd_wrong'),
+        () => coach('Good ear', 'Position and sound are judged separately. You can be right on one and wrong on the other in the same moment.', 'Next', () => go(4), 'snd_ok'));
     },
-    // 4 — both
+    // 4
     () => {
-      later(() => flashStim(5, 'H'), 300);
-      expect = new Set(['position', 'sound']);
-      ui.hint(['position', 'sound']);
+      later(() => present(5, 'H', 1), 300);
       coach('Both repeat',
         'Same square and the same letter as one step ago. Press both Position and Sound, in either order.',
         null, null, 'both', 1200);
-      onPress = (stream) => {
-        if (expect.has(stream)) {
-          expect.delete(stream);
-          ui.feedback(stream, true); ui.sfx('good');
-          ui.hint([...expect]);
-          if (expect.size === 0) {
-            coach('Both caught', 'Double matches are rarer than single ones. Most of the time only one stream repeats, or neither.', 'Next', () => go(5), 'both_ok');
-          }
-        } else {
-          ui.feedback(stream, false);
-        }
-      };
+      expectPress(['position', 'sound'],
+        () => {},
+        () => coach('Both caught', 'Double matches are rarer than single ones. Most of the time only one stream repeats, or neither.', 'Next', () => go(5), 'both_ok'));
     },
-    // 5 — no match
+    // 5
     () => {
-      later(() => flashStim(2, 'K'), 300);
-      expect = new Set();
+      later(() => present(2, 'K', 1), 300);
       ui.hint([]);
       coach('Nothing repeats',
         'New square, new letter. The right move is to press nothing and wait. Pressing when there is no match counts as an error, just like missing one. Tap Next when you are ready.',
         'Next', () => go(6), 'none', 1200);
       onPress = (stream) => {
-        ui.feedback(stream, false); ui.sfx('bad');
+        ui.feedback(stream, 'bad');
+        ui.sfx('bad');
         coach('That was new', 'Neither the square nor the letter repeated, so no press was needed. Holding back is part of the skill.', 'Next', () => go(6), 'none_wrong');
       };
     },
-    // 6 — N explained
+
+    // ---------- Part 2: 2-back ----------
+    // 6
     () => {
       ui.clear();
       ui.badge(2);
-      coach('What “N” means',
-        'You just played 1-back. At 2-back you compare each item with the one TWO steps earlier, so you hold two items in mind at once. The big number in the middle always shows the current N. Fewer than 3 errors in a session raises N next time; more than 5 lowers it.',
-        'Try a practice round', () => go(7), 'n_explained');
+      resetTurns();
+      coach('Now 2-back',
+        'That was 1-back. Now 2-back: compare each item with the one from two turns ago, not the last one. The strip above the grid shows the recent turns to help you.',
+        'Show me', () => go(7), 'two_intro');
     },
-    // 7 — practice
+    // 7
     () => {
-      ui.badge(1);
-      runPractice();
+      later(() => present(0, 'C', 2), 300);
+      later(() => present(8, 'H', 2), 2300);
+      coach('Two to remember',
+        'Turn 1 and turn 2. There is nothing to compare them with yet, so just remember both. Tap Next.',
+        'Next', () => go(8), 'two_mem', 3400);
     },
+    // 8
+    () => {
+      later(() => present(0, 'K', 2), 300);
+      coach('Look two back',
+        'Turn 3. Look two turns back, skipping turn 2. It is the same square as turn 1, so press Position.',
+        null, null, 'two_pos', 1200);
+      expectPress(['position'],
+        () => coach('Not quite', 'Not quite. Compare with the highlighted turn, two back, and try again.', null, null, 'two_wrong'),
+        () => coach('Right', 'Right. The letter changed from “C” to “K”, so Sound stays quiet.', 'Next', () => go(9), 'two_pos_ok'));
+    },
+    // 9
+    () => {
+      later(() => present(5, 'H', 2), 300);
+      coach('Skip the last one',
+        'Turn 4. Two back is turn 2. Different square, but the same letter, “H”. Press Sound.',
+        null, null, 'two_snd', 1200);
+      expectPress(['sound'],
+        () => coach('Not quite', 'Not quite. Compare with the highlighted turn, two back, and try again.', null, null, 'two_wrong'),
+        () => coach('Good', 'Good. Notice that you skipped right over turn 3.', 'Next', () => go(10), 'two_snd_ok'));
+    },
+    // 10
+    () => {
+      later(() => present(6, 'R', 2), 300);
+      ui.hint([]);
+      coach('Nothing matches',
+        'Turn 5. Two back is turn 3. Different square, different letter, so the right move is to wait. Tap Next when you are ready.',
+        'Next', () => go(11), 'two_none', 1200);
+      onPress = (stream) => {
+        ui.feedback(stream, 'bad');
+        ui.sfx('bad');
+        coach('That was new', 'Neither the square nor the letter repeated, so no press was needed. Holding back is part of the skill.', 'Next', () => go(11), 'none_wrong');
+      };
+    },
+    // 11
+    () => runPractice(),
   ];
 
   function go(step) {
     if (!t.active) return;
     clearTimers();
     onPress = null;
-    expect = null;
     ui.hint([]);
     t.step = step;
     if (step >= steps.length) { complete(); return; }
     steps[step]();
   }
 
+  /** Ten items of 2-back with no button hints. The strip stays visible. */
   function runPractice() {
-    const n = 1;
-    const interval = 3200;
-    const stim = 700;
+    const BACK = 2;
+    const INTERVAL = 3400;
     let i = -1;
     let hits = 0;
     let errors = 0;
     let pressed = new Set();
-    let targets = new Set();
-    coach('Practice: 1-back, 8 items', 'Hints are on: the button that matches lights up. Press it before the next item arrives.', null, null, 'practice_intro');
-    const nextTrial = () => {
-      // score the previous trial
-      if (i >= n) {
-        for (const s of targets) if (!pressed.has(s)) { errors++; ui.sfx('missed'); ui.feedback(s, false); }
+    let targets = [];
+    const totalTargets = PRACTICE.reduce((sum, _, k) => sum + targetsAt(PRACTICE, k, BACK).length, 0);
+
+    ui.clear();
+    ui.badge(2);
+    resetTurns();
+    coach('Practice: 2-back',
+      'Practice time: 2-back, ten items. The buttons will not light up this time, but the strip stays on to help you compare.',
+      null, null, 'practice2_intro');
+
+    const closeTrial = () => {
+      for (const stream of targets) {
+        if (!pressed.has(stream)) { errors++; ui.feedback(stream, 'missed'); ui.sfx('missed'); }
       }
+    };
+
+    const nextTrial = () => {
+      if (i >= 0) closeTrial();
       i++;
       if (i >= PRACTICE.length) { finishPractice(); return; }
-      const cur = PRACTICE[i];
       pressed = new Set();
-      targets = new Set();
-      if (i >= n) {
-        const back = PRACTICE[i - n];
-        if (back.pos === cur.pos) targets.add('position');
-        if (back.letter === cur.letter) targets.add('sound');
-      }
-      flashStim(cur.pos, cur.letter, stim);
-      ui.hint([...targets]);
-      if (i < n) coach('Practice', 'Remember this first item.', null);
-      else if (targets.size === 0) coach('Practice', `Item ${i + 1} of ${PRACTICE.length}: nothing repeats. Wait.`, null);
-      else coach('Practice', `Item ${i + 1} of ${PRACTICE.length}: ${[...targets].map(s => s === 'position' ? 'the square' : 'the letter').join(' and ')} repeated. Press ${[...targets].map(s => s === 'position' ? 'Position' : 'Sound').join(' and ')}.`, null);
-      later(nextTrial, interval);
+      targets = targetsAt(PRACTICE, i, BACK);
+      present(PRACTICE[i][0], PRACTICE[i][1], BACK, 800);
+      coach('Practice: 2-back', i < BACK
+        ? `Item ${i + 1} of ${PRACTICE.length}. Remember it.`
+        : `Item ${i + 1} of ${PRACTICE.length}. Compare with the highlighted turn.`, null);
+      later(nextTrial, INTERVAL);
     };
+
     onPress = (stream) => {
-      if (i < n || pressed.has(stream)) return;
+      if (i < BACK || i >= PRACTICE.length || pressed.has(stream)) return;
       pressed.add(stream);
-      const ok = targets.has(stream);
-      ui.feedback(stream, ok);
+      const ok = targets.includes(stream);
+      ui.feedback(stream, ok ? 'good' : 'bad');
       ui.sfx(ok ? 'good' : 'bad');
-      if (ok) { hits++; ui.hint([...targets].filter(s => !pressed.has(s))); } else errors++;
+      if (ok) hits++; else errors++;
     };
+
     const finishPractice = () => {
       ui.clear();
-      ui.hint([]);
       onPress = null;
-      const totalTargets = 6;
       ui.sfx(errors <= 2 ? 'levelup' : 'complete');
       coach('Practice done',
-        `You caught ${hits} of ${totalTargets} matches with ${errors} error${errors === 1 ? '' : 's'}. In a real session there are no hints and the pace is a little faster, but the rules are exactly what you just did. The center number shows your level, and the game adjusts it for you.`,
-        'Finish', () => complete(), 'practice_done');
+        `You caught ${hits} of ${totalTargets} matches with ${errors} mistake${errors === 1 ? '' : 's'}. That is 2-back. In a real session the strip is gone, so you hold the last two items in your head. You start at 1-back, and the game moves you up when you make fewer than three mistakes on each button.`,
+        'Finish', () => complete(), 'practice2_done');
     };
+
     ui.afterVoice(() => {
-      if (!t.active || t.step !== 7) return;
+      if (!t.active || t.step !== 11) return;
       ui.sfx('go');
       later(nextTrial, 600);
     }, 1500);
@@ -226,10 +286,10 @@ export function createTutorial(ui) {
 
   return {
     get active() { return t.active; },
+    get step() { return t.step; },
     start() { go(0); },
     press(stream) {
-      if (!t.active) return;
-      if (onPress) onPress(stream);
+      if (t.active && onPress) onPress(stream);
     },
     skip() {
       if (!t.active) return;

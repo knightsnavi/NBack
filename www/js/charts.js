@@ -201,7 +201,7 @@ export function barChart(container, { bars, goal = 0, height = 150 }) {
 }
 
 /** Calendar heatmap of the last `weeks` weeks. byDay: Map(dayKey -> count). */
-export function heatmap(container, { byDay, weeks = 12, dayKeyFn, now = Date.now() }) {
+export function heatmap(container, { byDay, weeks = 12, dayKeyFn, addDaysFn, now = Date.now() }) {
   container.innerHTML = '';
   container.classList.add('chart');
   const t = tokens(container);
@@ -213,7 +213,8 @@ export function heatmap(container, { byDay, weeks = 12, dayKeyFn, now = Date.now
   const svg = svgEl('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height, role: 'img' });
   const today = new Date(now);
   const dow = (today.getDay() + 6) % 7; // Monday = 0
-  const start = new Date(now - ((weeks - 1) * 7 + dow) * 86400000);
+  const step = addDaysFn || ((ts, n) => ts + n * 86400000);
+  const start = step(now, -((weeks - 1) * 7 + dow));
   const max = Math.max(1, ...byDay.values());
   const tip = ensureTip(container);
   const left = 24;
@@ -223,7 +224,7 @@ export function heatmap(container, { byDay, weeks = 12, dayKeyFn, now = Date.now
   let lastMonth = -1;
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
-      const ts = start.getTime() + (w * 7 + d) * 86400000;
+      const ts = step(start, w * 7 + d);
       if (ts > now + 43200000) continue;
       const key = dayKeyFn(ts);
       const count = byDay.get(key) || 0;

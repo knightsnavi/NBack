@@ -6,7 +6,8 @@
 //  - color:    8 colours painted on the lit cell (triple N-back)
 //  - a standard block has 20 + N trials, about 30% of scorable trials are targets
 //    in each stream, and a few targets coincide across streams
-//  - adaptive difficulty: fewer than 3 errors raises N, more than 5 lowers it
+//  - adaptive difficulty, judged per stream: fewer than 3 mistakes in every stream
+//    raises N, more than 5 in any one stream lowers it
 
 export const LETTERS = ['C', 'H', 'K', 'L', 'Q', 'R', 'S', 'T'];
 export const POSITIONS = [0, 1, 2, 3, 5, 6, 7, 8]; // 3x3 cell indices, centre (4) unused
@@ -154,37 +155,51 @@ export function scoreBlock(sequence, responses) {
   return { n, mode, streams, trials: trials.length, perStream, errors, accuracy, meanRt };
 }
 
+/** Error thresholds for the standard rule, scaled to the block length. */
+export function errorThresholds(scorable = 20) {
+  const scale = scorable / 20;
+  return { up: Math.max(1, Math.round(3 * scale)), down: Math.max(2, Math.round(5 * scale)) };
+}
+
 /**
- * Adaptive level change after a block.
- *  - 'standard' (Jaeggi 2008): fewer than 3 errors → N+1, more than 5 → N-1.
- *    Thresholds scale with block length so long blocks are not punished.
+ * Adaptive level change after a block. `score` is the result of scoreBlock().
+ *  - 'standard' (Jaeggi et al. 2008): the rule is judged PER STREAM. Fewer than
+ *    three mistakes in every stream → N+1. More than five mistakes in any one
+ *    stream → N-1. Otherwise N stays. Thresholds scale with block length.
  *  - 'relaxed' (Brain Workshop default): accuracy ≥ 80% → N+1, below 50% → N-1.
  */
-export function nextN(n, errors, opts = {}) {
+export function nextN(n, score, opts = {}) {
   const { min = 1, max = 9, rule = 'standard' } = opts;
   if (rule === 'relaxed') {
-    const acc = opts.accuracy ?? 0;
+    const acc = score.accuracy ?? 0;
     if (acc >= (opts.upAccuracy ?? 0.8)) return Math.min(n + 1, max);
     if (acc < (opts.downAccuracy ?? 0.5)) return Math.max(n - 1, min);
     return n;
   }
-  const scale = opts.scorable ? opts.scorable / 20 : 1;
-  const up = opts.up ?? Math.round(3 * scale);
-  const down = opts.down ?? Math.round(5 * scale);
-  if (errors < up) return Math.min(n + 1, max);
-  if (errors > down) return Math.max(n - 1, min);
+  const { up, down } = errorThresholds(score.trials - score.n);
+  const errors = Object.values(score.perStream).map(m => m.errors);
+  if (errors.length && errors.every(e => e < up)) return Math.min(n + 1, max);
+  if (errors.some(e => e > down)) return Math.max(n - 1, min);
   return n;
 }
 
-/** How far a block was from a level up, for the results screen. */
-export function levelUpGap(errors, accuracy, opts = {}) {
-  const { rule = 'standard', scorable = 20 } = opts;
+/**
+ * How far a block was from a level up, for the results screen.
+ * standard → { kind: 'errors', target, streams: [{ stream, over }] } where `over`
+ *            is how many fewer mistakes that stream needed
+ * relaxed  → { kind: 'accuracy', target, gap }
+ */
+export function levelUpGap(score, opts = {}) {
+  const { rule = 'standard' } = opts;
   if (rule === 'relaxed') {
-    const need = opts.upAccuracy ?? 0.8;
-    return { kind: 'accuracy', target: need, gap: Math.max(0, need - accuracy) };
+    const target = opts.upAccuracy ?? 0.8;
+    return { kind: 'accuracy', target, gap: Math.max(0, target - score.accuracy) };
   }
-  const up = Math.round(3 * (scorable / 20));
-  return { kind: 'errors', target: up, gap: Math.max(0, errors - (up - 1)) };
+  const { up } = errorThresholds(score.trials - score.n);
+  const streams = Object.entries(score.perStream)
+    .map(([stream, m]) => ({ stream, over: Math.max(0, m.errors - (up - 1)) }))
+    .filter(x => x.over > 0);
+  return { kind: 'errors', target: up, streams, gap: streams.reduce((a, x) => a + x.over, 0) };
 }
 
 /** Deterministic PRNG for tests and reproducible sequences (mulberry32). */
