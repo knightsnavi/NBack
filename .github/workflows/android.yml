@@ -1,7 +1,8 @@
-name: Android
+name: Build
 
 # Every push to main is checked, built, and published as the rolling "dev" prerelease.
 # A version tag (v1.2.0) publishes a proper release. Pull requests are checked and built.
+# The iOS app is compiled and started in an iPhone and an iPad simulator on every run.
 # Running the workflow by hand on another branch publishes a "preview" prerelease to try on a device.
 on:
   push:
@@ -40,6 +41,59 @@ jobs:
           python3 -m http.server 8080 --bind 127.0.0.1 --directory www >/dev/null 2>&1 &
           sleep 1
           npm run e2e
+
+  # iOS: compile for the simulator (no signing needed), then start the app on an iPhone and an
+  # iPad and keep a screenshot of each. Installing on a real device needs an Apple signing
+  # identity, so that is done from Xcode; see the README.
+  ios:
+    needs: web
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Sync web layer into the iOS project
+        run: |
+          npm ci
+          npx cap sync ios
+
+      - name: Build for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ios-build" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee xcodebuild.log | tail -40
+
+      - name: Start the app on an iPhone and an iPad
+        run: |
+          APP=$(find "$RUNNER_TEMP/ios-build/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)
+          test -n "$APP"
+          mkdir -p ios-screenshots
+          # newest available simulator whose name starts with the given word
+          pick() { xcrun simctl list devices available -j | jq -r --arg k "$1" '[.devices | to_entries | sort_by(.key)[] | select(.key | contains("iOS")) | .value[] | select(.name | startswith($k))] | last | .udid'; }
+          for kind in iPhone iPad; do
+            udid=$(pick "$kind")
+            echo "$kind simulator: $udid"
+            xcrun simctl boot "$udid"
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl install "$udid" "$APP"
+            xcrun simctl launch "$udid" com.knightsnavi.nback
+            sleep 20
+            xcrun simctl io "$udid" screenshot "ios-screenshots/$kind.png"
+            xcrun simctl shutdown "$udid"
+          done
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: ios-simulator
+          path: |
+            ios-screenshots
+            xcodebuild.log
 
   build:
     needs: web

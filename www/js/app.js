@@ -136,7 +136,7 @@ function bindLifecycle() {
 
 function initNative() {
   if (!N.isNative) return;
-  root.dataset.native = 'android';
+  root.dataset.native = N.platform; // 'android' | 'ios'
   N.watchFold(segments => setExternalSegments(segments));
   N.onResume(() => armReminders());
   N.onBackButton(() => {
@@ -175,6 +175,7 @@ function checkBrowserSupport() {
     && CSS.supports('color', 'color-mix(in oklab, red 50%, blue)');
   if (ok) return;
   const banner = $('#unsupported');
+  if (N.isIOS) $('#unsupported-fix').textContent = 'Open Settings → General → Software Update, install iOS 16.4 or later, then reopen NBack.';
   banner.hidden = false;
   $('#unsupported-ok').addEventListener('click', () => { banner.hidden = true; });
 }

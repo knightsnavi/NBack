@@ -12,7 +12,7 @@ const node = { process: 'readonly', console: 'readonly', Buffer: 'readonly', set
 const nodeWithPage = { ...node, window: 'readonly', document: 'readonly', localStorage: 'readonly', MutationObserver: 'readonly', PointerEvent: 'readonly', Event: 'readonly', performance: 'readonly' };
 
 export default [
-  { ignores: ['node_modules/**', 'android/**', 'screenshots/**', 'docs/**', 'scripts/explainer/frames/**'] },
+  { ignores: ['node_modules/**', 'android/**', 'ios/**', 'screenshots/**', 'docs/**', 'scripts/explainer/frames/**'] },
   js.configs.recommended,
   {
     files: ['www/**/*.js'],

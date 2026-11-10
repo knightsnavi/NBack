@@ -73,7 +73,7 @@ async function onSettingChange(el) {
   if (key === 'reminders.enabled' && state.settings.reminders.enabled) {
     const perm = N.isNative ? await N.notificationPermission(true) : await R.requestPermission();
     if (perm !== 'granted') {
-      toast(N.isNative ? 'Notifications are turned off for NBack. Allow them in Android settings to get reminders.' : 'Notifications were not allowed. The calendar option still works.', 4000);
+      toast(N.isNative ? `Notifications are turned off for NBack. Allow them in ${N.settingsName} to get reminders.` : 'Notifications were not allowed. The calendar option still works.', 4000);
     }
   }
   saveSettings();
@@ -101,7 +101,7 @@ export function initSettings({ startTutorial, openVideo, showHowTo }) {
   $('#btn-reminder-test').addEventListener('click', async () => {
     if (N.isNative) {
       const perm = await N.notificationPermission(true);
-      if (perm !== 'granted') toast('Notifications are turned off for NBack in Android settings.', 3500);
+      if (perm !== 'granted') toast(`Notifications are turned off for NBack in ${N.settingsName}.`, 3500);
       else toast((await N.testNotification()) ? 'Test notification arrives in a moment' : 'Could not schedule a notification');
     } else {
       const perm = await R.requestPermission();

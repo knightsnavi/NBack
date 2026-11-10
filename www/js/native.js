@@ -1,8 +1,14 @@
-// Bridge to the native Android shell (Capacitor) with browser fallbacks, so
-// the same code runs as an installed app and as a plain web page.
+// Bridge to the native shell (Capacitor, on Android and iOS) with browser
+// fallbacks, so the same code runs as an installed app and as a plain web page.
 
 const cap = typeof window !== 'undefined' ? window.Capacitor : null;
 export const isNative = Boolean(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+/** 'android' | 'ios' | 'web' */
+export const platform = isNative && typeof cap.getPlatform === 'function' ? cap.getPlatform() : 'web';
+export const isAndroid = platform === 'android';
+export const isIOS = platform === 'ios';
+/** Where the user changes this app's notification permission. */
+export const settingsName = isIOS ? 'iOS Settings' : 'Android settings';
 
 function plugin(name) {
   if (!isNative) return null;
@@ -13,8 +19,10 @@ function plugin(name) {
   }
 }
 
-const Fold = plugin('Fold');
-const Screen = plugin('Screen');
+// Fold and Screen are this app's own Android plugins; asking for them elsewhere would only produce errors.
+const Fold = isAndroid ? plugin('Fold') : null;
+const Screen = isAndroid ? plugin('Screen') : null;
+const KeepAwake = isIOS ? plugin('KeepAwake') : null;
 const Haptics = plugin('Haptics');
 const LocalNotifications = plugin('LocalNotifications');
 const App = plugin('App');
@@ -59,6 +67,10 @@ export async function keepAwake(on) {
     try { await Screen.keepAwake({ on: Boolean(on) }); } catch { /* ignore */ }
     return;
   }
+  if (KeepAwake) {
+    try { await (on ? KeepAwake.keepAwake() : KeepAwake.allowSleep()); } catch { /* ignore */ }
+    return;
+  }
   try {
     if (on && !wakeLock && navigator.wakeLock) {
       wakeLock = await navigator.wakeLock.request('screen');
@@ -93,7 +105,7 @@ export function haptic(kind) {
 /* ---------- files and sharing ---------- */
 /**
  * Hand a text file to the user. In the app this writes it to the cache and opens
- * the Android share sheet (Save to Files, Drive, email…); in a browser it downloads.
+ * the system share sheet (Save to Files, Drive, email…); in a browser it downloads.
  * Returns 'shared' | 'downloaded' | 'failed'.
  */
 export async function saveFile(filename, text, mime = 'application/json') {
@@ -148,7 +160,7 @@ export async function shareText(title, text) {
 }
 
 /* ---------- reminders ---------- */
-/** Android 13+ asks for notification permission at runtime. */
+/** Android 13+ and iOS ask for notification permission at runtime. */
 export async function notificationPermission(request = false) {
   if (!LocalNotifications) return 'unsupported';
   try {
@@ -221,9 +233,9 @@ export async function testNotification() {
 }
 
 /* ---------- system ---------- */
-/** Hardware / gesture back. handler() returns true when it consumed the event. */
+/** Hardware / gesture back (Android only). handler() returns true when it consumed the event. */
 export function onBackButton(handler) {
-  if (!App) return;
+  if (!App || !isAndroid) return;
   App.addListener('backButton', () => {
     if (!handler()) App.exitApp();
   });

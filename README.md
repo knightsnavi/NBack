@@ -1,7 +1,8 @@
 # NBack Trainer
 
-A dual / triple N-back working-memory trainer for Android, designed for foldable phones. It is
-built with Capacitor, so the same code also runs as an offline-capable web app. It works on the
+A dual / triple N-back working-memory trainer for Android, designed for foldable phones, that also
+runs on iPhone and iPad. It is built with Capacitor, so the same code is the Android app, the iOS
+app and an offline-capable web app. It works on the
 cover screen, on the inner screen flat or in landscape, and half-open in tabletop or book posture,
 where the grid and the controls sit on opposite screens and nothing straddles the hinge.
 
@@ -96,6 +97,30 @@ cp keystore.properties.example keystore.properties   # then fill in the password
 
 After editing anything in `www/`, run `npx cap sync android` again before building.
 
+## iPhone and iPad
+
+The same web code runs in an iOS shell under `ios/`. It needs iOS 16.4 or later. iPhone is
+portrait only; iPad rotates freely and works in Split View.
+
+Apple only lets signed apps onto a device, so there is no downloadable build as there is for
+Android. On a Mac with Xcode:
+
+```
+npm install
+npx cap sync ios            # copies www/ into the iOS project and updates plugins
+npx cap open ios            # opens ios/App/App.xcodeproj in Xcode
+```
+
+In Xcode, select the **App** target → Signing & Capabilities, tick *Automatically manage signing*
+and choose your team. Plug in the iPhone or iPad, pick it as the run destination, and press Run.
+
+- With a free Apple ID the app runs on your own devices and has to be re-installed every 7 days.
+- Sharing it with other people (TestFlight) or publishing it needs the paid Apple Developer Program.
+
+Every CI run compiles the iOS app and starts it in an iPhone and an iPad simulator; the screenshots
+are attached to the run as the `ios-simulator` artifact. `node scripts/ios-icons.mjs` regenerates the
+app icon and launch image.
+
 ## Run it in a browser
 
 ```
@@ -132,5 +157,6 @@ How the code is organised:
 | `www/js/posture.js` | Fold detection; publishes `data-posture`, `data-layout`, `data-width` on `<html>` |
 | `www/js/app.js` | Composition root: wires input, lifecycle and the modules together |
 | `android/app/src/main/java/…/FoldPlugin.java`, `ScreenPlugin.java` | Hinge geometry and keep-screen-on |
+| `ios/App/` | The iOS shell: Xcode project, icon, launch screen. Plugins come in through Swift Package Manager |
 
 Layout rules live in `www/css/styles.css`, keyed off the posture attributes above.
