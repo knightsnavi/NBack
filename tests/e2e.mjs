@@ -266,7 +266,15 @@ await check('the tutorial teaches 1-back then 2-back, and its unhinted practice 
   while (guard++ < 400) {
     sizes.add(`${await rect(page, '#board')}|${await rect(page, '#btn-sound')}`);
     const title = await page.textContent('#coach-title');
-    if (titles[titles.length - 1] !== title) titles.push(title);
+    if (titles[titles.length - 1] !== title) {
+      titles.push(title);
+      if (title === 'Two to remember') assert.equal(await page.isVisible('#coach-next'), false, 'Next waits until both items have been shown');
+      if (title === 'Look two back') {
+        // the 2-back lesson: turn 3 is compared with turn 1, and turn 2 is the one to skip
+        const marks = await page.evaluate(() => Object.fromEntries(['now', 'back', 'skip'].map(c => [c, document.querySelector(`.turn.${c} .num`)?.textContent])));
+        assert.deepEqual(marks, { now: 'Turn 3', back: 'Turn 1', skip: 'Turn 2' });
+      }
+    }
     if (title === 'Practice done') break;
     if (title === 'Practice: 2-back') {
       practiceSeen = true;

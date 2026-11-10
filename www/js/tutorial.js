@@ -13,6 +13,7 @@
 //   hint(streams)               pulse the buttons the player should press ([] clears)
 //   strip(turns, marks)         recent turns [{ n, pos, letter }], marks = { now, back, skip } turn numbers
 //   coach({ step, steps, title, text, button, onButton, voice, voiceDelay })
+//   next(label, onButton)       show the coach button without touching the text or narration
 //   feedback(stream, kind)      'good' | 'bad' | 'missed' on a button
 //   sfx(kind)                   play a UI sound
 //   badge(n)                    set the centre N badge
@@ -99,14 +100,14 @@ export function createTutorial(ui) {
     },
     // 1
     () => {
-      later(() => present(0, 'C'), 300);
+      present(0, 'C');
       coach('Watch and listen',
         'The top-left square lit up and you heard “C”. Keep both in mind. Tap Next to see the following item.',
         'Next', () => go(2), 'watch', 1300);
     },
     // 2
     () => {
-      later(() => present(0, 'H', 1), 300);
+      present(0, 'H', 1);
       coach('Same square!',
         'The same square lit up as one step ago, so this is a position match. Press the Position button now.',
         null, null, 'pos_match', 1200);
@@ -116,7 +117,7 @@ export function createTutorial(ui) {
     },
     // 3
     () => {
-      later(() => present(5, 'H', 1), 300);
+      present(5, 'H', 1);
       coach('Same letter!',
         'A different square this time, but you heard “H” again, the same as one step ago. Press Sound.',
         null, null, 'snd_match', 1200);
@@ -126,7 +127,7 @@ export function createTutorial(ui) {
     },
     // 4
     () => {
-      later(() => present(5, 'H', 1), 300);
+      present(5, 'H', 1);
       coach('Both repeat',
         'Same square and the same letter as one step ago. Press both Position and Sound, in either order.',
         null, null, 'both', 1200);
@@ -136,7 +137,7 @@ export function createTutorial(ui) {
     },
     // 5
     () => {
-      later(() => present(2, 'K', 1), 300);
+      present(2, 'K', 1);
       ui.hint([]);
       coach('Nothing repeats',
         'New square, new letter. The right move is to press nothing and wait. Pressing when there is no match counts as an error, just like missing one. Tap Next when you are ready.',
@@ -160,15 +161,16 @@ export function createTutorial(ui) {
     },
     // 7
     () => {
-      later(() => present(0, 'C', 2), 300);
-      later(() => present(8, 'H', 2), 2300);
+      present(0, 'C', 2);
       coach('Two to remember',
         'Turn 1 and turn 2. There is nothing to compare them with yet, so just remember both. Tap Next.',
-        'Next', () => go(8), 'two_mem', 3400);
+        null, null, 'two_mem', 3200);
+      // Next only appears once both items have been shown
+      later(() => { present(8, 'H', 2); ui.next('Next', () => go(8)); }, 2000);
     },
     // 8
     () => {
-      later(() => present(0, 'K', 2), 300);
+      present(0, 'K', 2);
       coach('Look two back',
         'Turn 3. Look two turns back, skipping turn 2. It is the same square as turn 1, so press Position.',
         null, null, 'two_pos', 1200);
@@ -178,7 +180,7 @@ export function createTutorial(ui) {
     },
     // 9
     () => {
-      later(() => present(5, 'H', 2), 300);
+      present(5, 'H', 2);
       coach('Skip the last one',
         'Turn 4. Two back is turn 2. Different square, but the same letter, “H”. Press Sound.',
         null, null, 'two_snd', 1200);
@@ -188,7 +190,7 @@ export function createTutorial(ui) {
     },
     // 10
     () => {
-      later(() => present(6, 'R', 2), 300);
+      present(6, 'R', 2);
       ui.hint([]);
       coach('Nothing matches',
         'Turn 5. Two back is turn 3. Different square, different letter, so the right move is to wait. Tap Next when you are ready.',

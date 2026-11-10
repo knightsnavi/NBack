@@ -7,6 +7,7 @@
   "scripts": {
     "test": "TZ=America/Chicago node --test tests/*.test.mjs",
     "e2e": "node tests/e2e.mjs",
+    "lint": "eslint .",
     "start": "python3 -m http.server 8080 --directory www",
     "sync": "cap sync android",
     "open": "cap open android",
@@ -25,6 +26,8 @@
     "@capacitor/status-bar": "^6.0.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.3"
+    "@capacitor/cli": "^6.2.3",
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5"
   }
 }

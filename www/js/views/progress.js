@@ -41,7 +41,7 @@ export function renderProgress() {
     [sum.sessions, 'sessions'],
     filter === 'all' ? [sum.byDay.size, 'days trained'] : [`${S.levelFor(s, filter)}-back`, 'level now'],
     [sum.bestN ? `${sum.bestN}-back` : '—', 'best level'],
-    [pct(sum.avgAcc7), '7-day accuracy'],
+    [pct(sum.avgAcc7), 'last 7 days'],
     [`${overall.streak} 🔥`, 'day streak'],
     [sum.totalMs ? ST.formatDuration(sum.totalMs) : '0 min', 'trained'],
   ].map(([v, l]) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`).join('');

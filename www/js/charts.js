@@ -190,7 +190,7 @@ export function barChart(container, { bars, goal = 0, height = 150 }) {
     const label = new Date(b.ts).toLocaleDateString(undefined, { weekday: 'narrow' });
     svg.appendChild(svgEl('text', { x: cx, y: height - 6, 'text-anchor': 'middle', fill: isToday ? t.text : t.muted, 'font-size': 11, 'font-weight': isToday ? 700 : 400 }, label));
     const hit = svgEl('rect', { x: pad.l + slot * i, y: pad.t, width: slot, height: height - pad.t - pad.b, fill: 'transparent' });
-    hit.addEventListener('pointerenter', (ev) => {
+    hit.addEventListener('pointerenter', () => {
       const rect = svg.getBoundingClientRect();
       placeTip(container, tip, (cx / width) * rect.width, top - 4, `<div class="tip-head">${formatDate(b.ts)}</div>${b.count} session${b.count === 1 ? '' : 's'}`);
     });

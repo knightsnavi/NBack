@@ -302,6 +302,7 @@ html[data-handed="left"] .action { direction: ltr; }
 }
 .action::after { content: ""; position: absolute; inset: 0; background: transparent; transition: background .12s ease; pointer-events: none; }
 .action .ico { display: grid; }
+.action .ico, .action .lbl { position: relative; z-index: 1; } /* labels stay readable above the feedback tint */
 .action .ico svg { width: 30px; height: 30px; }
 .action .key { position: absolute; top: 8px; right: 12px; font-size: .66rem; opacity: .75; font-weight: 700; letter-spacing: .08em; }
 .action:active, .action.pressed { filter: brightness(1.12); }
@@ -473,7 +474,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 32px; }
 .app[data-tutorial="on"] .hud { display: none; }
 .app[data-tutorial="on"] .side { justify-content: flex-end; gap: var(--gap); }
 .app[data-tutorial="on"] .coach { order: -1; }
-.app[data-tutorial="on"] .coach { flex: 1; min-height: 0; overflow: auto; }
+.app[data-tutorial="on"] .coach { flex: 1; min-height: 0; overflow: auto; grid-template-rows: auto auto minmax(0, 1fr) auto; align-content: stretch; }
+.app[data-tutorial="on"] .coach-actions { min-height: 44px; }
 .app[data-tutorial="on"] .coach-text { overflow: auto; min-height: 0; }
 html[data-posture="book"][data-hinge="on"] .app[data-tutorial="on"] .actions,
 html[data-layout="landscape"][data-posture="single"][data-width="wide"] .app[data-tutorial="on"] .actions { flex: 0 0 auto; max-height: 36dvh; }

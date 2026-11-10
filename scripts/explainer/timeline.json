@@ -1,5 +1,5 @@
 {
-  "total": 113.66326699999999,
+  "total": 115.25673699999999,
   "timeline": [
     {
       "key": "intro",
@@ -60,7 +60,7 @@
     {
       "key": "outro",
       "start": 101.157553,
-      "dur": 11.905714000000001,
+      "dur": 13.499184000000001,
       "narration": "/home/user/NBack/scripts/explainer/audio/outro.mp3",
       "narAt": 101.557553
     }

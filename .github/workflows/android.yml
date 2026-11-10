@@ -1,7 +1,8 @@
 name: Android
 
-# Every push to main builds and publishes a rolling "dev" prerelease with the APK.
-# A version tag (v1.2.0) publishes a proper release. Pull requests just build.
+# Every push to main is checked, built, and published as the rolling "dev" prerelease.
+# A version tag (v1.2.0) publishes a proper release. Pull requests are checked and built.
+# Running the workflow by hand on another branch publishes a "preview" prerelease to try on a device.
 on:
   push:
     branches: [main]
@@ -13,14 +14,42 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  # Lint, unit tests, and the end-to-end suite in headless Chromium.
+  web:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: End-to-end tests
+        run: |
+          npm install --no-save playwright@1
+          npx playwright install --with-deps chromium
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory www >/dev/null 2>&1 &
+          sleep 1
+          npm run e2e
+
+  build:
+    needs: web
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
           cache: npm
 
       - uses: actions/setup-java@v5
@@ -40,10 +69,9 @@ jobs:
           fi
           echo "VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
-      - name: Web layer tests and sync
+      - name: Sync web layer into the Android project
         run: |
           npm ci
-          npm test
           npx cap sync android
 
       # One stable signing key, so each new APK installs over the old one.
@@ -82,15 +110,9 @@ jobs:
           cp app/build/outputs/apk/release/*.apk "../out/NBack-${VERSION_NAME}.apk"
           cp app/build/outputs/bundle/release/*.aab "../out/NBack-${VERSION_NAME}.aab"
 
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'pull_request'
-        with:
-          name: NBack-${{ env.VERSION_NAME }}
-          path: out/*
-
       # Builds from main replace one rolling "dev" prerelease.
       - name: Publish dev build
-        if: env.RELEASE == '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: env.RELEASE == '' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -99,6 +121,18 @@ jobs:
             --target "$GITHUB_SHA" --prerelease \
             --title "NBack dev build ${VERSION_NAME}" \
             --notes "Latest build of main ($GITHUB_SHA). Signed with ${KEYSTORE_FILE:+the release key}${KEYSTORE_FILE:-a throwaway key: uninstall NBack before installing it}."
+
+      # A manual run on any other branch replaces one rolling "preview" prerelease, for trying a change on a device.
+      - name: Publish preview build
+        if: env.RELEASE == '' && github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete preview --cleanup-tag --yes >/dev/null 2>&1 || true
+          gh release create preview "out/NBack-${VERSION_NAME}.apk" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "NBack preview ${VERSION_NAME} (${GITHUB_REF_NAME})" \
+            --notes "Preview build of branch ${GITHUB_REF_NAME} ($GITHUB_SHA), not yet on main. Signed with ${KEYSTORE_FILE:+the release key}${KEYSTORE_FILE:-a throwaway key: uninstall NBack before installing it}."
 
       - name: Publish release
         if: env.RELEASE != ''

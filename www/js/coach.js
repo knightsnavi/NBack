@@ -137,6 +137,12 @@ export async function startTutorial() {
       next.textContent = button || 'Next';
       next.onclick = onButton || null;
     },
+    next: (label, onButton) => {
+      const next = $('#coach-next');
+      next.hidden = false;
+      next.textContent = label;
+      next.onclick = onButton;
+    },
     feedback: (stream, kind) => {
       if (state.settings.feedback) flash(stream, kind, kind === 'missed' ? 600 : 380);
       buzz(kind === 'good' ? 'tap' : kind);
